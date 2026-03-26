@@ -76,10 +76,10 @@ export function useAuth() {
 
         const { token } = (await verifyRes.json()) as { token: string };
         setAuthToken(token);
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && address) {
           localStorage.setItem(TOKEN_WALLET_KEY, address);
         }
-        authenticatedAddressRef.current = address;
+        authenticatedAddressRef.current = address ?? null;
       } catch (err) {
         // Non-fatal — user may have rejected the signature request
         console.error("[useAuth] SIWE authentication failed:", err);
