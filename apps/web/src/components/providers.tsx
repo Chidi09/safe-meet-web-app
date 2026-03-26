@@ -11,9 +11,12 @@ import { Toaster } from "sonner";
 // Wagmi / RainbowKit config
 // ------------------------------------------------------------
 
+const walletConnectProjectId =
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "local-dev-project-id";
+
 const wagmiConfig = getDefaultConfig({
   appName: "SafeMeet",
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "",
+  projectId: walletConnectProjectId,
   chains: [baseSepolia],
   ssr: true,
 });
