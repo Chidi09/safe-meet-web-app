@@ -56,3 +56,9 @@ next-env.d.ts
 .cache/
 temp/
 tmp/
+
+# Local deployment artifacts
+.turbo/
+**/.turbo/
+.deploy_ssh_key
+.deploy_ssh_key.pub
