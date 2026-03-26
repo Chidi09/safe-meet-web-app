@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo:*)",
+      "Bash(mkdir -p apps packages/shared/src)",
+      "Bash(mv safe-meet-web-app-main:*)",
+      "Bash(rm -rf apps/web/.git)"
+    ]
+  }
+}
