@@ -2,10 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "noEmit": false,
-    "paths": {
-      "@safe-meet/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "rootDir": "./src",
+    "noEmit": false
   },
-  "include": ["src", "prisma"]
+  "include": ["src"]
 }
