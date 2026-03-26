@@ -138,13 +138,26 @@ export default function WaitingRoomPage() {
 
             {/* Actions */}
             <div className="grid gap-3 sm:grid-cols-2">
-              <Button
-                onClick={handleGoToMeetup}
-                disabled={!pactId || isLoading || pact?.status === "CANCELLED"}
-                className="h-11 rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
-              >
-                Go to Meetup (Generate QR)
-              </Button>
+              {pact?.type === "TRADE" && (
+                <Button
+                  onClick={handleGoToMeetup}
+                  disabled={!pactId || isLoading || pact?.status === "CANCELLED"}
+                  className="h-11 rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
+                >
+                  Go to Meetup (Generate QR)
+                </Button>
+              )}
+
+              {pact?.type === "GOAL" && (
+                <Button
+                  onClick={() => router.push(`/submit-proof?pactId=${pactId}`)}
+                  disabled={!pactId || pact?.status === "CANCELLED" || pact?.status === "PROOF_SUBMITTED"}
+                  className="h-11 rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
+                >
+                  {pact?.status === "PROOF_SUBMITTED" ? "Proof Submitted" : "Submit Proof"}
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 onClick={handleCancelRefund}

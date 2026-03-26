@@ -203,12 +203,12 @@ export default function SettingsPage() {
                           Two-factor authentication
                         </p>
                         <p className="mt-1 text-lg font-semibold text-white">
-                          Enabled
+                          Not configured
                         </p>
                       </div>
 
-                      <Badge className="rounded-full bg-primary-container/20 text-primary">
-                        Active
+                      <Badge className="rounded-full bg-surface-highest text-on-surface-variant">
+                        Coming Soon
                       </Badge>
                     </div>
                   </div>

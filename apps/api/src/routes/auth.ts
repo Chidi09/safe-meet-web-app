@@ -8,6 +8,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import crypto from "crypto";
+import { recoverMessageAddress } from "viem";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../plugins/auth.js";
 
@@ -69,21 +70,15 @@ async function verifySignature(
   signature: string,
   address: string
 ): Promise<boolean> {
-  // TODO: Replace with actual ethers.js or viem signature verification
-  // This is a placeholder that should be implemented with proper crypto
-  
-  // For now, we'll accept any signature that looks valid (66 chars starting with 0x)
-  // THIS IS INSECURE - REPLACE IN PRODUCTION
-  if (!signature.match(/^0x[a-fA-F0-9]{130}$/)) {
+  try {
+    const recovered = await recoverMessageAddress({
+      message,
+      signature: signature as `0x${string}`,
+    });
+    return recovered.toLowerCase() === address.toLowerCase();
+  } catch {
     return false;
   }
-
-  // In production, use:
-  // import { verifyMessage } from 'viem';
-  // const recovered = await verifyMessage({ message, signature });
-  // return recovered.toLowerCase() === address.toLowerCase();
-
-  return true; // PLACEHOLDER - DO NOT USE IN PRODUCTION
 }
 
 // ------------------------------------------------------------

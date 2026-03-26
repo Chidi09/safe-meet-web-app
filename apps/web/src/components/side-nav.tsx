@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Handshake, History, LayoutDashboard, Lock, ShieldCheck } from "lucide-react";
 import { LogoIcon } from "@/components/logo-icon";
+import { useWallet } from "@/components/providers";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -15,6 +18,9 @@ export type SideNavProps = {
 };
 
 export function SideNav({ activeHref }: SideNavProps) {
+  const { walletAddress } = useWallet();
+  const profileHref = walletAddress ? `/profile/${walletAddress}` : "/settings";
+
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-white/8 bg-background/95 pt-[72px] xl:block">
       <div className="flex h-full flex-col px-4 py-6">
@@ -61,7 +67,7 @@ export function SideNav({ activeHref }: SideNavProps) {
             New Escrow
           </Link>
           <Link
-            href="/profile/vitalik.eth"
+            href={profileHref}
             className="inline-flex h-10 w-full items-center justify-center rounded-lg border border-outline-variant/30 bg-surface text-xs font-semibold uppercase tracking-[0.14em] text-on-surface-variant transition hover:text-white"
           >
             Public Profile

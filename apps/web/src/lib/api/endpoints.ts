@@ -119,6 +119,15 @@ export const profileApi = {
     const raw = await apiClient.get(`/api/profile/${wallet}`);
     return ProfileSchema.parse(raw);
   },
+
+  /** PATCH /api/profile/:wallet */
+  update: async (
+    wallet: string,
+    fields: { displayName?: string; email?: string; avatarUrl?: string }
+  ): Promise<Profile> => {
+    const raw = await apiClient.patch(`/api/profile/${wallet}`, fields);
+    return ProfileSchema.parse(raw);
+  },
 };
 
 // ------------------------------------------------------------

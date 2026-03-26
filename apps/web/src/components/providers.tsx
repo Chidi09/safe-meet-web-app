@@ -6,6 +6,7 @@ import { WagmiProvider, useAccount } from "wagmi";
 import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia } from "viem/chains";
 import { Toaster } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 // ------------------------------------------------------------
 // Wagmi / RainbowKit config
@@ -63,6 +64,12 @@ export function useWallet(): { walletAddress: string | null; isConnected: boolea
 // Providers tree
 // ------------------------------------------------------------
 
+// Runs SIWE auth whenever a wallet connects — must be inside WagmiProvider
+function AuthWatcher() {
+  useAuth();
+  return null;
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   const queryClient = getQueryClient();
 
@@ -70,6 +77,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
+          <AuthWatcher />
           {children}
           <Toaster
             position="bottom-right"

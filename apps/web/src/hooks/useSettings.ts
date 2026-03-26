@@ -74,18 +74,9 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
 
   return useMutation<Profile, Error, UpdateProfilePayload>({
-    mutationFn: async (payload) => {
-      // PATCH /api/profile/:wallet — add to endpoints.ts when backend is ready
-      const response = await fetch(`/api/profile/${payload.wallet}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error("Failed to update profile");
-      return response.json();
-    },
+    mutationFn: ({ wallet, ...fields }) =>
+      profileApi.update(wallet, fields),
     onSuccess: (data) => {
-      // Update cached profile immediately
       queryClient.setQueryData(profileKeys.detail(data.wallet), data);
     },
   });

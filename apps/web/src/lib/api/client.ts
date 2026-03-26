@@ -20,6 +20,29 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 export const isMockMode = BASE_URL === "";
 
 // ------------------------------------------------------------
+// Auth token management (localStorage)
+// ------------------------------------------------------------
+
+const TOKEN_KEY = "safemeet_jwt";
+
+export function setAuthToken(token: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TOKEN_KEY, token);
+  }
+}
+
+export function clearAuthToken(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+// ------------------------------------------------------------
 // Custom error class
 // ------------------------------------------------------------
 
@@ -68,10 +91,12 @@ async function request<T>(
   }
 
   // Build request
+  const token = getAuthToken();
   const init: RequestInit = {
     ...rest,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
   };
