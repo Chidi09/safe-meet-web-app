@@ -390,10 +390,10 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
           pactId: row.id,
           type: row.type as "TRADE" | "GOAL",
           creatorWallet: row.creatorWallet,
-          itemName: row.itemName ?? undefined,
-          assetAmount: row.assetAmount ?? undefined,
-          assetSymbol: row.assetSymbol ?? undefined,
-          location: row.location ?? undefined,
+          ...(row.itemName ? { itemName: row.itemName } : {}),
+          ...(row.assetAmount != null ? { assetAmount: row.assetAmount } : {}),
+          ...(row.assetSymbol ? { assetSymbol: row.assetSymbol } : {}),
+          ...(row.location ? { location: row.location } : {}),
         }),
         `/escrow/waiting-room?pactId=${row.id}`,
       );
@@ -593,7 +593,7 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         pactAcceptedEmail({
           pactId: row.id,
           counterpartyWallet: row.counterpartyWallet,
-          itemName: row.itemName ?? undefined,
+          ...(row.itemName ? { itemName: row.itemName } : {}),
         }),
         `/escrow/waiting-room?pactId=${row.id}`,
       );
@@ -743,7 +743,7 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         }),
       ]);
 
-      const completedTemplate = pactCompletedEmail({ pactId: updatedPact.id, itemName: updatedPact.itemName ?? undefined });
+      const completedTemplate = pactCompletedEmail({ pactId: updatedPact.id, ...(updatedPact.itemName ? { itemName: updatedPact.itemName } : {}) });
       await Promise.all([
         notifyWalletWithTemplate(updatedPact.creatorWallet, "Pact completed", `Pact ${updatedPact.id.slice(0, 8)} is complete.`, completedTemplate, `/history`),
         notifyWalletWithTemplate(updatedPact.counterpartyWallet, "Pact completed", `Pact ${updatedPact.id.slice(0, 8)} is complete.`, completedTemplate, `/history`),
