@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "./prisma.js";
+import { sendEmail } from "./email.js";
 
 const vapidSubject = process.env["VAPID_SUBJECT"];
 const vapidPublicKey = process.env["VAPID_PUBLIC_KEY"];
@@ -25,6 +26,22 @@ export async function notifyWallet(
       ...(link ? { link } : {}),
     },
   });
+
+  // Send email if wallet has one on file
+  const profile = await prisma.profile.findUnique({
+    where: { wallet },
+    select: { email: true },
+  });
+  if (profile?.email) {
+    const appUrl = process.env["FRONTEND_URL"] ?? "https://app.safe-meet.click";
+    const linkHtml = link ? `<p><a href="${appUrl}${link}">View in SafeMeet →</a></p>` : "";
+    await sendEmail({
+      to: profile.email,
+      subject: title,
+      text: `${body}${link ? `\n\n${appUrl}${link}` : ""}`,
+      html: `<p>${body}</p>${linkHtml}`,
+    }).catch(() => undefined);
+  }
 
   if (!pushEnabled) {
     return;
