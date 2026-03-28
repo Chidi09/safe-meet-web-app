@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Users, Share2, CheckCircle, Lock, QrCode, ShieldCheck, ArrowRight } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
