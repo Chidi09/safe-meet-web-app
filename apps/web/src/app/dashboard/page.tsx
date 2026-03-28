@@ -1,7 +1,8 @@
 "use client";
 
-import { Clock3, Handshake, ShieldCheck, Wallet } from "lucide-react";
+import { Clock3, Handshake, ShieldCheck, Wallet, ArrowRight, Share2 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,16 +57,6 @@ function StatusBadge({ status }: { status: PactStatus }) {
 }
 
 
-function getPactAction(status: PactStatus): string {
-  switch (status) {
-    case "ACTIVE": return "Meet Now";
-    case "PENDING": return "Awaiting Counterparty";
-    case "PROOF_SUBMITTED": return "Review Proof";
-    default: return "View";
-  }
-}
-
-
 function StatCardSkeleton() {
   return (
     <Card className="bg-surface text-white">
@@ -99,14 +90,115 @@ function EmptyPacts() {
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <img src="/illustrations/flat-source-03.svg" alt="No active escrows" className="mb-6 w-full max-w-xl rounded-xl border border-white/10" />
       <ShieldCheck className="mb-4 h-10 w-10 text-on-surface-variant" />
-      <p className="font-headline text-lg font-bold text-white">No active escrows yet</p>
+      <p className="font-headline text-lg font-bold text-white">No active pacts yet</p>
       <p className="mt-1 text-sm text-on-surface-variant">
-        Create your first pact to get started.
+        Create a trade escrow or goal pact to get started.
       </p>
-      <Link href="/create" className="mt-4 inline-flex h-10 items-center rounded-lg bg-primary-container px-4 text-sm font-bold text-white">
-        Create Your First Pact
+      <Link href="/create" className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-primary-container px-5 text-sm font-bold text-white">
+        Create Your First Pact <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>
+  );
+}
+
+function PactCard({ pact }: { pact: Pact }) {
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/pact/${pact.id}`
+    : `/pact/${pact.id}`;
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(shareUrl);
+    toast.success("Pact link copied");
+  };
+
+  return (
+    <Card className="bg-surface-high text-white">
+      <CardHeader className="space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="font-headline text-xl font-bold">
+                {pact.itemName ?? pact.goalDescription ?? "Unnamed Pact"}
+              </CardTitle>
+              <StatusBadge status={pact.status} />
+            </div>
+            <CardDescription className="mt-1 text-xs font-mono text-on-surface-variant truncate max-w-[200px]">
+              {pact.counterpartyWallet}
+            </CardDescription>
+          </div>
+          <Badge className="flex-shrink-0 rounded-full bg-surface-highest px-3 py-1 text-xs text-white">
+            {pact.asset.amountFormatted}
+          </Badge>
+        </div>
+
+        <div className="space-y-1.5 text-sm text-on-surface-variant">
+          {pact.location && <p>📍 {pact.location}</p>}
+          {pact.scheduledAt && (
+            <p className="inline-flex items-center gap-2">
+              <Clock3 className="h-3.5 w-3.5" />
+              {new Date(pact.scheduledAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+
+        {/* Contextual hint */}
+        {pact.status === "PENDING" && (
+          <p className="rounded-lg border border-tertiary/20 bg-tertiary/5 px-3 py-2 text-xs text-tertiary">
+            Waiting for counterparty to accept — share the link so they can join.
+          </p>
+        )}
+        {pact.status === "ACTIVE" && pact.type === "TRADE" && (
+          <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+            Ready to meet — both sides have locked funds. Go to the meetup to complete.
+          </p>
+        )}
+        {pact.status === "PROOF_SUBMITTED" && (
+          <p className="rounded-lg border border-secondary-container/20 bg-secondary-container/5 px-3 py-2 text-xs text-secondary-container">
+            Proof submitted — awaiting referee review.
+          </p>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-2">
+        {pact.status === "PENDING" ? (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCopyLink}
+              className="h-10 flex-1 rounded-lg bg-primary-container text-xs font-bold text-white hover:bg-primary-container/90"
+            >
+              <Share2 className="mr-1.5 h-3.5 w-3.5" /> Copy Share Link
+            </Button>
+            <Link
+              href={`/escrow/waiting-room?pactId=${pact.id}`}
+              className="inline-flex h-10 items-center rounded-lg border border-outline-variant/40 bg-surface px-4 text-xs font-bold text-white hover:bg-surface-high"
+            >
+              View
+            </Link>
+          </div>
+        ) : pact.status === "ACTIVE" && pact.type === "TRADE" ? (
+          <Link
+            href={`/escrow/handshake?pactId=${pact.id}`}
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary-container font-bold text-white hover:bg-primary-container/90"
+          >
+            Go to Meetup (QR Handshake)
+          </Link>
+        ) : pact.status === "ACTIVE" && pact.type === "GOAL" ? (
+          <Link
+            href={`/submit-proof?pactId=${pact.id}`}
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary-container font-bold text-white hover:bg-primary-container/90"
+          >
+            Submit Proof
+          </Link>
+        ) : (
+          <Link
+            href={`/escrow/waiting-room?pactId=${pact.id}`}
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-outline-variant/40 bg-surface font-bold text-white hover:bg-surface-high"
+          >
+            View Pact
+          </Link>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -128,9 +220,9 @@ export default function DashboardPage() {
     <PageFrame activeHref="/dashboard" showSidebar>
       <section className="section-wrap space-y-8">
         <header className="space-y-2">
-          <h1 className="font-headline text-4xl font-bold text-white">Unified Dashboard</h1>
+          <h1 className="font-headline text-4xl font-bold text-white">My Dashboard</h1>
           <p className="text-on-surface-variant">
-            Manage your ongoing physical exchanges and protocol releases.
+            Track your active pacts, meetups, and trade history in one place.
           </p>
         </header>
 
@@ -141,9 +233,9 @@ export default function DashboardPage() {
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
                 <Wallet className="h-6 w-6" />
               </div>
-              <CardTitle className="font-headline text-2xl font-bold">Connect to access your dashboard</CardTitle>
+              <CardTitle className="font-headline text-2xl font-bold">Connect your wallet to view your dashboard</CardTitle>
               <CardDescription className="mt-2 max-w-sm text-on-surface-variant">
-                Sign in with your wallet to view active escrows, pact history, and protocol stats.
+                All your active pacts, escrow balances, and trade history will appear here after you connect.
               </CardDescription>
               <Link
                 href="/connect"
@@ -205,7 +297,7 @@ export default function DashboardPage() {
                         {stats?.completedTrades.toLocaleString() ?? "—"}
                       </CardTitle>
                       <div className="inline-flex items-center gap-2 text-xs text-secondary-container">
-                        <Handshake className="h-3.5 w-3.5" /> 100% immutable trust
+                        <Handshake className="h-3.5 w-3.5" /> All verified by on-chain escrow
                       </div>
                     </CardHeader>
                   </Card>
@@ -233,19 +325,27 @@ export default function DashboardPage() {
               <Tabs defaultValue="pending" className="w-full">
                 <CardHeader className="pb-2">
                   <TabsList className="bg-surface-high">
-                    <TabsTrigger value="pending">Pending Meetups</TabsTrigger>
+                    <TabsTrigger value="pending">Active Pacts</TabsTrigger>
                     <TabsTrigger value="history">Trade History</TabsTrigger>
                   </TabsList>
                 </CardHeader>
 
                 <CardContent>
-                  {/* Pending tab */}
+                  {/* Active pacts tab */}
                   <TabsContent value="pending" className="mt-1">
-                    <div className="mb-6">
-                      <h2 className="font-headline text-2xl font-bold text-white">Active Ledger</h2>
-                      <p className="text-sm text-on-surface-variant">
-                        In-person exchanges currently protected by escrow.
-                      </p>
+                    <div className="mb-6 flex items-center justify-between">
+                      <div>
+                        <h2 className="font-headline text-2xl font-bold text-white">Active Pacts</h2>
+                        <p className="text-sm text-on-surface-variant">
+                          Pacts that need your attention or are awaiting meetup.
+                        </p>
+                      </div>
+                      <Link
+                        href="/create"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary-container px-4 text-xs font-bold text-white hover:bg-primary-container/90"
+                      >
+                        New Pact <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
 
                     {isLoading ? (
@@ -258,37 +358,7 @@ export default function DashboardPage() {
                     ) : (
                       <div className="grid gap-5 lg:grid-cols-2">
                         {pending.map((pact: Pact) => (
-                          <Card key={pact.id} className="bg-surface-high text-white">
-                            <CardHeader className="space-y-3">
-                              <div className="flex items-start justify-between gap-4">
-                                <div>
-                                  <CardTitle className="font-headline text-xl font-bold">
-                                    {pact.itemName ?? "Unnamed Item"}
-                                  </CardTitle>
-                                  <CardDescription className="mt-1 text-xs font-mono text-on-surface-variant">
-                                    {pact.counterpartyWallet}
-                                  </CardDescription>
-                                </div>
-                                <Badge className="rounded-full bg-surface-highest px-3 py-1 text-xs text-white">
-                                  {pact.asset.amountFormatted}
-                                </Badge>
-                              </div>
-                              <div className="space-y-1.5 text-sm text-on-surface-variant">
-                                {pact.location && <p>Location: {pact.location}</p>}
-                                {pact.scheduledAt && (
-                                  <p className="inline-flex items-center gap-2">
-                                    <Clock3 className="h-3.5 w-3.5" />
-                                    {new Date(pact.scheduledAt).toLocaleString()}
-                                  </p>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <Button className="h-11 w-full rounded-lg bg-primary-container font-bold text-white hover:bg-primary-container/90">
-                                {getPactAction(pact.status)}
-                              </Button>
-                            </CardContent>
-                          </Card>
+                          <PactCard key={pact.id} pact={pact} />
                         ))}
                       </div>
                     )}
@@ -304,14 +374,14 @@ export default function DashboardPage() {
                       </div>
                     ) : historyRows.length === 0 ? (
                       <div className="py-12 text-center text-sm text-on-surface-variant">
-                        No transaction history yet.
+                        No completed trades yet.
                       </div>
                     ) : (
                       <Table>
                         <TableHeader>
                           <TableRow className="border-outline-variant/20">
                             <TableHead>Date</TableHead>
-                            <TableHead>Asset</TableHead>
+                            <TableHead>Item / Goal</TableHead>
                             <TableHead>Counterparty</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Amount</TableHead>

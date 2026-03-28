@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import type { Html5QrcodeScanner } from "html5-qrcode";
+import { QrCode, ScanLine, CheckCircle2, Info } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,7 @@ function QrScannerSection({ onScan, isPending }: ScannerProps) {
         className="overflow-hidden rounded-lg"
       />
       <p className="mt-4 text-center text-sm text-on-surface-variant">
-        {isPending ? "Verifying..." : "Point camera at seller QR code"}
+        {isPending ? "Verifying — please wait..." : "Point your camera at the seller's QR code"}
       </p>
     </div>
   );
@@ -96,7 +97,7 @@ export default function HandshakePage() {
   const handleGenerateQr = () => {
     if (!pactId) return;
     generateQr.mutate(pactId, {
-      onSuccess: () => toast.success("QR generated."),
+      onSuccess: () => toast.success("QR generated — show it to the buyer."),
       onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to generate QR."),
     });
   };
@@ -118,117 +119,150 @@ export default function HandshakePage() {
 
   return (
     <PageFrame activeHref="/create">
-      <section className="section-wrap grid gap-8 lg:grid-cols-2">
+      <section className="section-wrap space-y-6">
 
-        {/* Seller — QR code */}
-        <Card className="bg-surface text-center text-white">
-          <CardHeader>
-            <Badge className="mx-auto w-fit rounded-full bg-surface-high text-xs uppercase tracking-[0.14em] text-primary">
-              Seller perspective
-            </Badge>
-            <CardTitle className="mt-3 font-headline text-4xl font-bold">The Handshake</CardTitle>
-            <CardDescription className="mx-auto max-w-md text-on-surface-variant">
-              Show this code to buyer when the item is physically transferred.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* QR display */}
-            <div className="mx-auto w-[270px] rounded-2xl bg-white p-4">
-              {qrData?.nonce ? (
-                <QRCode value={qrData.nonce} size={240} />
-              ) : (
-                <div className="grid h-[240px] grid-cols-8 gap-1 rounded bg-white p-2">
-                  {Array.from({ length: 64 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className={i % 2 === 0 || i % 5 === 0 ? "rounded-sm bg-black" : "rounded-sm bg-white"}
-                    />
-                  ))}
+        {/* Page header */}
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">In-Person Handshake</p>
+          <h1 className="mt-3 font-headline text-4xl font-bold text-white sm:text-5xl">Complete the Trade</h1>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-on-surface-variant">
+            The seller generates a QR code, the buyer scans it. Escrow is released the moment the scan succeeds — no middleman.
+          </p>
+        </div>
+
+        {/* Info bar */}
+        {pact && (
+          <div className="flex flex-wrap items-center justify-center gap-4 rounded-xl border border-white/8 bg-surface p-4 text-sm text-on-surface-variant">
+            <span><span className="font-semibold text-white">Item:</span> {pact.itemName ?? "—"}</span>
+            <span className="text-white/20">|</span>
+            <span><span className="font-semibold text-white">Amount:</span> {pact.asset.amountFormatted}</span>
+            <span className="text-white/20">|</span>
+            <span><span className="font-semibold text-white">With:</span> <span className="font-mono text-xs">{pact.counterpartyWallet.slice(0, 8)}…{pact.counterpartyWallet.slice(-4)}</span></span>
+          </div>
+        )}
+
+        <div className="grid gap-8 lg:grid-cols-2">
+
+          {/* Seller — QR code */}
+          <Card className="bg-surface text-center text-white">
+            <CardHeader>
+              <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <Badge className="mx-auto w-fit rounded-full bg-surface-high text-xs uppercase tracking-[0.14em] text-primary">
+                I am the Seller
+              </Badge>
+              <CardTitle className="mt-3 font-headline text-3xl font-bold">Generate QR Code</CardTitle>
+              <CardDescription className="mx-auto max-w-sm text-on-surface-variant">
+                Tap the button below to generate a one-time QR code. Show it to the buyer only after you have physically handed over the item.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* How it works note */}
+              <div className="flex items-start gap-2 rounded-lg border border-white/8 bg-surface-high p-3 text-left text-xs text-on-surface-variant">
+                <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                <span>The QR is signed, single-use, and expires in 10 minutes. Escrow releases the moment the buyer scans it.</span>
+              </div>
+
+              {/* QR display */}
+              <div className="mx-auto w-[270px] rounded-2xl bg-white p-4">
+                {qrData?.nonce ? (
+                  <QRCode value={qrData.nonce} size={240} />
+                ) : (
+                  <div className="grid h-[240px] grid-cols-8 gap-1 rounded bg-white p-2">
+                    {Array.from({ length: 64 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className={i % 2 === 0 || i % 5 === 0 ? "rounded-sm bg-black/10" : "rounded-sm bg-white"}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* TX hash */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-high px-4 py-2 text-xs text-on-surface-variant">
+                {isLoading
+                  ? "Loading..."
+                  : pact?.txHash
+                    ? `TX: ${pact.txHash.slice(0, 6)}...${pact.txHash.slice(-4)}`
+                    : "TX: Not yet submitted"}
+              </div>
+              {pact?.txHash && (
+                <div className="mt-2">
+                  <a
+                    href={getTxExplorerUrl(pact.txHash)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    View on BaseScan ↗
+                  </a>
                 </div>
               )}
-            </div>
 
-            {/* TX hash */}
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-outline-variant/30 bg-surface-high px-4 py-2 text-xs text-on-surface-variant">
-              {isLoading
-                ? "Loading..."
-                : pact?.txHash
-                  ? `TX: ${pact.txHash.slice(0, 6)}...${pact.txHash.slice(-4)}`
-                  : "TX: Not yet submitted"}
-            </div>
-            {pact?.txHash && (
-              <div className="mt-2">
-                <a
-                  href={getTxExplorerUrl(pact.txHash)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-primary hover:underline"
-                >
-                  View on BaseScan
-                </a>
+              {/* Generate QR button */}
+              {pactId && !qrData && (
+                <div className="mt-2">
+                  <Button
+                    onClick={handleGenerateQr}
+                    disabled={generateQr.isPending}
+                    className="rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
+                  >
+                    {generateQr.isPending ? "Generating..." : "Generate QR Code"}
+                  </Button>
+                </div>
+              )}
+
+              {/* QR expiry */}
+              {qrData?.expiresAt && (
+                <p className="text-xs text-amber-400">
+                  Expires at {format(new Date(qrData.expiresAt), "HH:mm:ss")} — generate a new one if it expires
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Buyer — scan */}
+          <Card className="bg-surface text-white">
+            <CardHeader>
+              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-secondary-container/20 bg-secondary-container/10 text-secondary-container">
+                <ScanLine className="h-5 w-5" />
               </div>
-            )}
+              <Badge className="w-fit rounded-full bg-surface-high text-xs uppercase tracking-[0.14em] text-secondary-container">
+                I am the Buyer
+              </Badge>
+              <CardTitle className="mt-3 font-headline text-3xl font-bold">Scan to Release</CardTitle>
+              <CardDescription className="text-on-surface-variant">
+                Once you have physically received the item, scan the seller&apos;s QR code to release the escrow funds.
+              </CardDescription>
 
-            {/* Generate QR button */}
-            {pactId && !qrData && (
-              <div className="mt-4">
-                <Button
-                  onClick={handleGenerateQr}
-                  disabled={generateQr.isPending}
-                  className="rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
-                >
-                  {generateQr.isPending ? "Generating..." : "Generate QR Code"}
-                </Button>
+              {/* How it works note */}
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-white/8 bg-surface-high p-3 text-xs text-on-surface-variant">
+                <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-secondary-container" />
+                <span>Only scan after you have the item in hand. This action is irreversible — funds will be released to the seller immediately.</span>
               </div>
-            )}
+            </CardHeader>
+            <CardContent>
+              {verifyQr.isSuccess ? (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
+                  <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-400" />
+                  <p className="text-lg font-bold text-emerald-400">Pickup Confirmed!</p>
+                  <p className="mt-1 text-sm text-on-surface-variant">Escrow has been released to the seller. Trade complete.</p>
+                </div>
+              ) : (
+                <QrScannerSection onScan={handleScan} isPending={verifyQr.isPending} />
+              )}
 
-            {/* QR expiry */}
-            {qrData?.expiresAt && (
-              <p className="mt-3 text-xs text-on-surface-variant">
-                Expires at {format(new Date(qrData.expiresAt), "HH:mm:ss")}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Buyer — scan */}
-        <Card className="bg-surface text-white">
-          <CardHeader>
-            <Badge className="w-fit rounded-full bg-surface-high text-xs uppercase tracking-[0.14em] text-secondary-container">
-              Buyer perspective
-            </Badge>
-            <CardTitle className="mt-3 font-headline text-3xl font-bold">Scan and Release</CardTitle>
-            <CardDescription className="text-on-surface-variant">
-              Scan seller QR to confirm pickup and release escrow directly from contract.
-            </CardDescription>
-
-            {/* Pact details */}
-            {pact && (
-              <div className="mt-3 space-y-1 rounded-lg border border-outline-variant/25 bg-surface-high p-3 text-sm text-on-surface-variant">
-                <p><span className="text-white font-medium">Item:</span> {pact.itemName ?? "—"}</p>
-                <p><span className="text-white font-medium">Amount:</span> {pact.asset.amountFormatted}</p>
-                <p><span className="text-white font-medium">Counterparty:</span> {pact.counterpartyWallet}</p>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent>
-            {verifyQr.isSuccess ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
-                <p className="text-lg font-bold text-emerald-400">Pickup Confirmed!</p>
-                <p className="mt-1 text-sm text-on-surface-variant">Escrow has been released.</p>
-              </div>
-            ) : (
-              <QrScannerSection onScan={handleScan} isPending={verifyQr.isPending} />
-            )}
-
-            {/* Error */}
-            {verifyQr.isError && (
-              <p className="mt-3 text-sm text-error">
-                Verification failed. Please try again.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              {/* Error */}
+              {verifyQr.isError && (
+                <p className="mt-3 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
+                  Verification failed. Make sure you&apos;re scanning the correct QR code and it hasn&apos;t expired.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </section>
     </PageFrame>
   );

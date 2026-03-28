@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { isAddress } from "viem";
+import { Lock, Target, ArrowRight, CheckCircle, Info } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,18 @@ import { CreateTradePactBodySchema } from "@safe-meet/shared";
 import type { CreateTradePactBody } from "@safe-meet/shared";
 
 const ASSET_OPTIONS = ["ETH", "USDC", "DAI"] as const;
+
+const TRADE_STEPS = [
+  { icon: Lock, label: "Funds locked on-chain", desc: "Your collateral is held by a smart contract — not us." },
+  { icon: ArrowRight, label: "Share pact link", desc: "Send the link to your counterparty via WhatsApp or Telegram." },
+  { icon: CheckCircle, label: "Meet and scan QR", desc: "At handoff, buyer scans seller's QR code to release escrow instantly." },
+];
+
+const GOAL_STEPS = [
+  { icon: Lock, label: "Stake collateral", desc: "Lock funds as a commitment to your goal." },
+  { icon: ArrowRight, label: "Assign a referee", desc: "Choose someone you trust to verify your proof." },
+  { icon: CheckCircle, label: "Submit proof", desc: "Show evidence — referee approves or rejects." },
+];
 
 export default function CreatePage() {
   const router = useRouter();
@@ -98,24 +111,31 @@ export default function CreatePage() {
       >
         <header className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
-            Protocol initiation
+            New Pact
           </p>
           <h1 className="mt-3 font-headline text-5xl font-bold text-white sm:text-6xl">
-            Create SafeMeet
+            Create a Pact
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-on-surface-variant">
-            Pick a path and initialize your pact on-chain.
+            Choose what kind of agreement you want to protect — a physical trade or a personal goal.
           </p>
         </header>
 
+        {/* Wallet required banner */}
         {!walletAddress && (
-          <div className="mx-auto max-w-sm rounded-2xl border border-primary-container/30 bg-surface p-8 text-center shadow-[0_0_50px_-20px_#7d56fe]">
-            <p className="text-sm text-on-surface-variant">You need to connect your wallet before creating a pact.</p>
+          <div className="mx-auto max-w-lg rounded-2xl border border-primary-container/40 bg-surface p-8 text-center shadow-[0_0_50px_-20px_#7d56fe]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <Lock className="h-5 w-5" />
+            </div>
+            <p className="font-semibold text-white">Wallet not connected</p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              You need a wallet to create a pact. Signing in is free and gasless — no transaction needed.
+            </p>
             <Link
               href="/connect"
-              className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
+              className="mt-5 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
             >
-              Connect Wallet
+              Connect Wallet to Continue
             </Link>
           </div>
         )}
@@ -124,21 +144,60 @@ export default function CreatePage() {
           {/* Trade Escrow card */}
           <Card className="relative overflow-hidden bg-surface text-white">
             <div className="sm-glow -top-28 -right-24 h-56 w-56 bg-primary-container/25" />
+
+            {/* Overlay when not connected */}
+            {!walletAddress && (
+              <div className="absolute inset-0 z-10 flex items-end justify-center rounded-[inherit] bg-surface/60 backdrop-blur-[2px] pb-8">
+                <Link
+                  href="/connect"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-primary/30 bg-surface px-5 text-sm font-bold text-primary hover:bg-primary/10"
+                >
+                  <Lock className="h-3.5 w-3.5" /> Connect to unlock
+                </Link>
+              </div>
+            )}
+
             <CardHeader>
-              <CardDescription className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
-                Module 01 - Path A
-              </CardDescription>
-              <CardTitle className="font-headline text-4xl font-bold">Trade Escrow</CardTitle>
+              <div className="mb-1 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <CardDescription className="text-xs font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
+                  Trade Escrow
+                </CardDescription>
+              </div>
+              <CardTitle className="font-headline text-3xl font-bold">Sell or Buy Safely</CardTitle>
               <CardDescription className="text-on-surface-variant">
-                Lock funds, meet in person, and release with a QR-based handshake.
+                Lock funds before meeting. Release only when you physically receive the item — via a one-time QR scan. No trust required.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="space-y-4">
+              {/* Mini how-it-works */}
+              {!tradeExpanded && (
+                <div className="space-y-2 rounded-xl border border-white/6 bg-surface-high p-4">
+                  {TRADE_STEPS.map((s) => {
+                    const Icon = s.icon;
+                    return (
+                      <div key={s.label} className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Icon className="h-3 w-3" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-white">{s.label}</p>
+                          <p className="text-xs text-on-surface-variant">{s.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {!tradeExpanded ? (
                 <Button
                   onClick={() => setTradeExpanded(true)}
                   disabled={!walletAddress}
-                  className="h-11 rounded-lg bg-primary-container px-6 text-sm font-bold text-white hover:bg-primary-container/90"
+                  className="h-11 w-full rounded-lg bg-primary-container px-6 text-sm font-bold text-white hover:bg-primary-container/90"
                 >
                   Start Trade Pact
                 </Button>
@@ -156,6 +215,10 @@ export default function CreatePage() {
                       placeholder="0x… or name.eth"
                       className="h-10 border-outline-variant/40 bg-surface-high text-white placeholder:text-on-surface-variant"
                     />
+                    <p className="flex items-center gap-1 text-[11px] text-on-surface-variant">
+                      <Info className="h-3 w-3" />
+                      The wallet address of the person you&apos;re trading with
+                    </p>
                     {errors.counterpartyWallet && (
                       <p className="text-xs text-error">{errors.counterpartyWallet.message}</p>
                     )}
@@ -192,7 +255,7 @@ export default function CreatePage() {
                   {/* Location */}
                   <div className="space-y-1.5">
                     <label className="text-xs uppercase tracking-[0.14em] text-on-surface-variant">
-                      Location (optional)
+                      Meetup Location (optional)
                     </label>
                     <Input
                       {...register("location")}
@@ -214,11 +277,11 @@ export default function CreatePage() {
                   </div>
 
                   {/* Asset symbol + amount */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs uppercase tracking-[0.14em] text-on-surface-variant">
-                        Asset
-                      </label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs uppercase tracking-[0.14em] text-on-surface-variant">
+                      Escrow Amount
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
                       <select
                         {...register("assetSymbol")}
                         className="h-10 w-full rounded-md border border-outline-variant/40 bg-surface-high px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-ring"
@@ -229,11 +292,6 @@ export default function CreatePage() {
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs uppercase tracking-[0.14em] text-on-surface-variant">
-                        Amount
-                      </label>
                       <Input
                         {...register("assetAmount", { valueAsNumber: true })}
                         type="number"
@@ -242,10 +300,14 @@ export default function CreatePage() {
                         placeholder="0.0"
                         className="h-10 border-outline-variant/40 bg-surface-high text-white placeholder:text-on-surface-variant"
                       />
-                      {errors.assetAmount && (
-                        <p className="text-xs text-error">{errors.assetAmount.message}</p>
-                      )}
                     </div>
+                    <p className="flex items-center gap-1 text-[11px] text-on-surface-variant">
+                      <Info className="h-3 w-3" />
+                      This amount is locked on-chain until the QR handshake is complete
+                    </p>
+                    {errors.assetAmount && (
+                      <p className="text-xs text-error">{errors.assetAmount.message}</p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-1">
@@ -273,25 +335,74 @@ export default function CreatePage() {
           {/* Goal Pact card */}
           <Card className="relative overflow-hidden bg-surface text-white">
             <div className="sm-glow -top-28 -right-24 h-56 w-56 bg-secondary-container/25" />
+
+            {/* Overlay when not connected */}
+            {!walletAddress && (
+              <div className="absolute inset-0 z-10 flex items-end justify-center rounded-[inherit] bg-surface/60 backdrop-blur-[2px] pb-8">
+                <Link
+                  href="/connect"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-secondary-container/30 bg-surface px-5 text-sm font-bold text-secondary-container hover:bg-secondary-container/10"
+                >
+                  <Lock className="h-3.5 w-3.5" /> Connect to unlock
+                </Link>
+              </div>
+            )}
+
             <CardHeader>
-              <CardDescription className="text-xs uppercase tracking-[0.16em] text-on-surface-variant">
-                Module 02 - Path B
-              </CardDescription>
-              <CardTitle className="font-headline text-4xl font-bold">Goal Pact</CardTitle>
+              <div className="mb-1 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-secondary-container/20 bg-secondary-container/10 text-secondary-container">
+                  <Target className="h-4 w-4" />
+                </div>
+                <CardDescription className="text-xs font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
+                  Goal Pact
+                </CardDescription>
+              </div>
+              <CardTitle className="font-headline text-3xl font-bold">Commit to a Goal</CardTitle>
               <CardDescription className="text-on-surface-variant">
-                Stake collateral against your own commitment and let a referee judge proof.
+                Stake funds on your own promise. Assign a referee to review your proof — they decide whether you get your stake back.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="space-y-4">
+              {/* Mini how-it-works */}
+              <div className="space-y-2 rounded-xl border border-white/6 bg-surface-high p-4">
+                {GOAL_STEPS.map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={s.label} className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-secondary-container/10 text-secondary-container">
+                        <Icon className="h-3 w-3" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-white">{s.label}</p>
+                        <p className="text-xs text-on-surface-variant">{s.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               <Button
                 onClick={handleStartGoal}
                 disabled={!walletAddress}
-                className="h-11 rounded-lg bg-secondary-container px-6 text-sm font-bold text-white hover:bg-secondary-container/90"
+                className="h-11 w-full rounded-lg bg-secondary-container px-6 text-sm font-bold text-white hover:bg-secondary-container/90"
               >
                 Start Goal Pact
               </Button>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Bottom explainer */}
+        <div className="rounded-2xl border border-white/8 bg-surface p-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+            How pacts work
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3 text-sm text-on-surface-variant">
+            <p><span className="font-semibold text-white">Non-custodial.</span> Your funds go directly into a smart contract — SafeMeet never holds your money.</p>
+            <p><span className="font-semibold text-white">Gasless sign-in.</span> Connecting your wallet is free. Gas is only paid when funds are locked or released.</p>
+            <p><span className="font-semibold text-white">Cancel anytime.</span> Before your counterparty accepts, you can cancel and get your funds back immediately.</p>
+          </div>
         </div>
       </motion.section>
     </PageFrame>
