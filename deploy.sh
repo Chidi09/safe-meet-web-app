@@ -169,15 +169,30 @@ if [[ $WEB_HEALTHY -eq 0 ]]; then
 fi
 
 echo "[9/12] Writing nginx config..."
+
+# Cert paths (subdomains only — apex may be behind Cloudflare CDN)
+CERT_DIR="/etc/letsencrypt/live/app.$DOMAIN"
+CERT_LIVE="$CERT_DIR/fullchain.pem"
+
+echo "[10/12] Provisioning TLS certificate for subdomains..."
+if [[ ! -f "$CERT_LIVE" ]]; then
+  # First time — issue cert for both subdomains only (apex is behind CF)
+  certbot certonly --nginx \
+    -d "app.$DOMAIN" -d "api.$DOMAIN" \
+    --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL"
+else
+  certbot renew --quiet --cert-name "app.$DOMAIN" --deploy-hook "systemctl reload nginx" 2>/dev/null || true
+fi
+
+# Write full nginx config — HTTP + HTTPS with existing cert
 cat > /etc/nginx/sites-available/safe-meet <<EOT
-# ── Web (apex + app subdomain) ─────────────────────────────────
+# ── Apex domain (behind Cloudflare) — HTTP only ────────────────
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAIN app.$DOMAIN;
+    server_name $DOMAIN;
     client_max_body_size 20m;
 
-    # API calls made relative to the web origin also reach Fastify
     location /api/ {
         proxy_pass http://127.0.0.1:${API_PORT};
         proxy_http_version 1.1;
@@ -188,7 +203,6 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
     }
-
     location / {
         proxy_pass http://127.0.0.1:${WEB_PORT};
         proxy_http_version 1.1;
@@ -201,12 +215,69 @@ server {
     }
 }
 
-# ── API subdomain ───────────────────────────────────────────────
+# ── app subdomain HTTP → HTTPS ─────────────────────────────────
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.$DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+# ── api subdomain HTTP → HTTPS ─────────────────────────────────
 server {
     listen 80;
     listen [::]:80;
     server_name api.$DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+# ── app subdomain HTTPS ────────────────────────────────────────
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name app.$DOMAIN;
     client_max_body_size 20m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    ssl_certificate     $CERT_DIR/fullchain.pem;
+    ssl_certificate_key $CERT_DIR/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    location / {
+        proxy_pass http://127.0.0.1:${WEB_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ── api subdomain HTTPS ────────────────────────────────────────
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name api.$DOMAIN;
+    client_max_body_size 20m;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    ssl_certificate     $CERT_DIR/fullchain.pem;
+    ssl_certificate_key $CERT_DIR/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://127.0.0.1:${API_PORT};
@@ -226,26 +297,7 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
-echo "[10/12] Provisioning or renewing TLS certificate..."
-# Determine which domains need certs
-CERT_DOMAINS="-d $DOMAIN -d app.$DOMAIN -d api.$DOMAIN"
-CERT_LIVE="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
-CERT_LIVE_APP="/etc/letsencrypt/live/app.$DOMAIN/fullchain.pem"
-
-if [[ ! -f "$CERT_LIVE" && ! -f "$CERT_LIVE_APP" ]]; then
-  certbot --nginx $CERT_DOMAINS --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect
-else
-  # Expand existing cert to include all domains if needed
-  certbot --nginx $CERT_DOMAINS --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect --expand 2>/dev/null || \
-  certbot renew --quiet --deploy-hook "systemctl reload nginx"
-fi
-
-echo "[11/12] Enforcing HSTS..."
-if ! grep -q "Strict-Transport-Security" /etc/nginx/sites-available/safe-meet; then
-  sed -i '/server_name/a\    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;' /etc/nginx/sites-available/safe-meet
-  nginx -t
-  systemctl reload nginx
-fi
+echo "[11/12] HSTS already in config — skipping sed patch"
 
 echo "$NEW" > "$ACTIVE_FILE"
 
