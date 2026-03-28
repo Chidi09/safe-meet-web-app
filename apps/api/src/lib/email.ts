@@ -6,6 +6,7 @@
 // ============================================================
 
 import nodemailer from "nodemailer";
+import type { EmailTemplate } from "./email-templates.js";
 
 const smtpHost = process.env["SMTP_HOST"];
 const smtpPort = parseInt(process.env["SMTP_PORT"] ?? "587", 10);
@@ -13,7 +14,7 @@ const smtpUser = process.env["SMTP_USER"];
 const smtpPass = process.env["SMTP_PASS"];
 const fromAddress = process.env["SMTP_FROM"] ?? "SafeMeet <noreply@safe-meet.click>";
 
-const emailEnabled = Boolean(smtpHost && smtpUser && smtpPass);
+export const emailEnabled = Boolean(smtpHost && smtpUser && smtpPass);
 
 const transporter = emailEnabled
   ? nodemailer.createTransport({
@@ -32,4 +33,15 @@ export async function sendEmail(opts: {
 }): Promise<void> {
   if (!transporter) return;
   await transporter.sendMail({ from: fromAddress, ...opts });
+}
+
+export async function sendTemplate(to: string, template: EmailTemplate): Promise<void> {
+  if (!transporter) return;
+  await transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
+  });
 }

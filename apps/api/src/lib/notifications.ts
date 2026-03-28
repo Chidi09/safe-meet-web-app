@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { prisma } from "./prisma.js";
-import { sendEmail } from "./email.js";
+import { sendEmail, sendTemplate } from "./email.js";
+import type { EmailTemplate } from "./email-templates.js";
 
 const vapidSubject = process.env["VAPID_SUBJECT"];
 const vapidPublicKey = process.env["VAPID_PUBLIC_KEY"];
@@ -73,6 +74,53 @@ export async function notifyWallet(
             ? Number((error as { statusCode: number }).statusCode)
             : 0;
 
+        if (statusCode === 404 || statusCode === 410) {
+          await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
+        }
+      }
+    }),
+  );
+}
+
+/**
+ * Send a rich MJML email template to a wallet's profile email (if set).
+ * Also creates an in-app notification via notifyWallet.
+ */
+export async function notifyWalletWithTemplate(
+  wallet: string,
+  title: string,
+  body: string,
+  template: EmailTemplate,
+  link?: string,
+): Promise<void> {
+  await prisma.notification.create({
+    data: { wallet, title, body, ...(link ? { link } : {}) },
+  });
+
+  const profile = await prisma.profile.findUnique({
+    where: { wallet },
+    select: { email: true },
+  });
+  if (profile?.email) {
+    await sendTemplate(profile.email, template).catch(() => undefined);
+  }
+
+  if (!pushEnabled) return;
+  const subs = await prisma.pushSubscription.findMany({ where: { wallet } });
+  if (subs.length === 0) return;
+  const payload = JSON.stringify({ title, body, link });
+  await Promise.all(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+        );
+      } catch (error) {
+        const statusCode =
+          typeof error === "object" && error !== null && "statusCode" in error
+            ? Number((error as { statusCode: number }).statusCode)
+            : 0;
         if (statusCode === 404 || statusCode === 410) {
           await prisma.pushSubscription.deleteMany({ where: { endpoint: sub.endpoint } });
         }

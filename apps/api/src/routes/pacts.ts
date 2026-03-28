@@ -16,7 +16,8 @@ import { prisma } from "../lib/prisma.js";
 import { mapPact, mapPacts } from "../lib/mappers.js";
 import { requireAuth } from "../plugins/auth.js";
 import { normalizeWalletAddress } from "../lib/wallet.js";
-import { notifyWallet } from "../lib/notifications.js";
+import { notifyWallet, notifyWalletWithTemplate } from "../lib/notifications.js";
+import { pactCreatedEmail, pactAcceptedEmail, pactCompletedEmail, refereeAssignedEmail } from "../lib/email-templates.js";
 import {
   PactFiltersSchema,
   HistoryFiltersSchema,
@@ -381,11 +382,20 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         },
       });
 
-      await notifyWallet(
+      await notifyWalletWithTemplate(
         row.counterpartyWallet,
         "New pact invitation",
         `You were invited to pact ${row.id.slice(0, 8)}.`,
-        `/pact/${row.id}`,
+        pactCreatedEmail({
+          pactId: row.id,
+          type: row.type as "TRADE" | "GOAL",
+          creatorWallet: row.creatorWallet,
+          itemName: row.itemName ?? undefined,
+          assetAmount: row.assetAmount ?? undefined,
+          assetSymbol: row.assetSymbol ?? undefined,
+          location: row.location ?? undefined,
+        }),
+        `/escrow/waiting-room?pactId=${row.id}`,
       );
 
       return reply.status(201).send(mapPact(row));
@@ -576,10 +586,15 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         data: { status: "ACTIVE" },
       });
 
-      await notifyWallet(
+      await notifyWalletWithTemplate(
         row.creatorWallet,
         "Pact accepted",
-        `Your pact ${row.id.slice(0, 8)} was accepted by counterparty.`,
+        `Your pact ${row.id.slice(0, 8)} was accepted.`,
+        pactAcceptedEmail({
+          pactId: row.id,
+          counterpartyWallet: row.counterpartyWallet,
+          itemName: row.itemName ?? undefined,
+        }),
         `/escrow/waiting-room?pactId=${row.id}`,
       );
 
@@ -728,19 +743,10 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         }),
       ]);
 
+      const completedTemplate = pactCompletedEmail({ pactId: updatedPact.id, itemName: updatedPact.itemName ?? undefined });
       await Promise.all([
-        notifyWallet(
-          updatedPact.creatorWallet,
-          "Pact completed",
-          `Pact ${updatedPact.id.slice(0, 8)} is complete.`,
-          `/history`,
-        ),
-        notifyWallet(
-          updatedPact.counterpartyWallet,
-          "Pact completed",
-          `Pact ${updatedPact.id.slice(0, 8)} is complete.`,
-          `/history`,
-        ),
+        notifyWalletWithTemplate(updatedPact.creatorWallet, "Pact completed", `Pact ${updatedPact.id.slice(0, 8)} is complete.`, completedTemplate, `/history`),
+        notifyWalletWithTemplate(updatedPact.counterpartyWallet, "Pact completed", `Pact ${updatedPact.id.slice(0, 8)} is complete.`, completedTemplate, `/history`),
       ]);
 
       return reply.send(mapPact(updatedPact));
