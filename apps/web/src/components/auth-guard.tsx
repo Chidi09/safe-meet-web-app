@@ -63,27 +63,29 @@ export function AuthGuard({
     const returnTo = encodeURIComponent(pathname);
     return (
       <PageFrame activeHref={activeHref}>
-        <section className="section-wrap flex items-center justify-center py-20">
-          <Card className="max-w-md bg-surface text-white shadow-[0_0_50px_-20px_#7d56fe]">
-            <CardHeader className="items-center text-center py-12">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                <Wallet className="h-6 w-6" />
-              </div>
-              <CardTitle className="font-headline text-2xl font-bold">
-                Sign in to continue
-              </CardTitle>
-              <CardDescription className="mt-2 max-w-sm text-on-surface-variant">
-                This page requires a connected wallet. Sign in with your wallet — it&apos;s free and gasless.
-              </CardDescription>
-              <Link
-                href={`/connect?returnTo=${returnTo}`}
-                className="mt-6 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
-              >
-                Connect Wallet
-              </Link>
-            </CardHeader>
-          </Card>
-        </section>
+        <div className="section-wrap py-20">
+          <div className="mx-auto max-w-md">
+            <Card className="bg-surface text-white shadow-[0_0_50px_-20px_#7d56fe]">
+              <CardHeader className="items-center text-center py-12">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                  <Wallet className="h-6 w-6" />
+                </div>
+                <CardTitle className="font-headline text-2xl font-bold">
+                  Sign in to continue
+                </CardTitle>
+                <CardDescription className="mt-2 max-w-sm text-on-surface-variant">
+                  This page requires a connected wallet. Sign in with your wallet — it&apos;s free and gasless.
+                </CardDescription>
+                <Link
+                  href={`/connect?returnTo=${returnTo}`}
+                  className="mt-6 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
+                >
+                  Connect Wallet
+                </Link>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
       </PageFrame>
     );
   }
