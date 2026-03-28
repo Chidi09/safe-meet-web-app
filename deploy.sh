@@ -184,8 +184,17 @@ else
   certbot renew --quiet --cert-name "app.$DOMAIN" --deploy-hook "systemctl reload nginx" 2>/dev/null || true
 fi
 
-# Write full nginx config — HTTP + HTTPS with existing cert
-cat > /etc/nginx/sites-available/safe-meet <<EOT
+# Render the nginx template (updated by git reset above — always latest)
+sed \
+  -e "s|__DOMAIN__|$DOMAIN|g" \
+  -e "s|__API_PORT__|$API_PORT|g" \
+  -e "s|__WEB_PORT__|$WEB_PORT|g" \
+  -e "s|__CERT_DIR__|$CERT_DIR|g" \
+  "$APP_DIR/infra/nginx.conf.template" \
+  > /etc/nginx/sites-available/safe-meet
+
+# Legacy heredoc removed — kept as reference comment
+: <<'EOT'
 # ── Apex domain (behind Cloudflare) — HTTP only ────────────────
 server {
     listen 80;
