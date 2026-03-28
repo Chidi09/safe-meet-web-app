@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, QrCode, ShieldCheck, ArrowRight, Zap, Users, Target, CheckCircle } from "lucide-react";
+import { QrCode, ShieldCheck, ArrowRight, Zap, Target, CheckCircle } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -59,114 +59,72 @@ const FLOW = [
   },
 ];
 
-function EscrowDiagram() {
-  return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-0 overflow-hidden rounded-2xl border border-white/10 bg-surface-high p-8 select-none">
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-48 w-48 rounded-full bg-primary-container/10 blur-3xl" />
-      </div>
-      <div className="relative z-10 flex w-full max-w-xs items-center gap-3 rounded-xl border border-white/10 bg-surface px-4 py-3">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-secondary-container/20 text-secondary-container">
-          <Users className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Party A</p>
-          <p className="font-mono text-xs text-white/50">0x71a3…f92c</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-          <span className="text-xs text-emerald-400">Ready</span>
-        </div>
-      </div>
-      <div className="relative z-10 flex flex-col items-center py-2">
-        <div className="h-6 w-px bg-gradient-to-b from-white/20 to-primary-container/60" />
-        <p className="my-1 rounded-full border border-primary-container/30 bg-primary-container/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-primary">Lock Collateral ↓</p>
-        <div className="h-6 w-px bg-gradient-to-b from-primary-container/60 to-white/20" />
-      </div>
-      <div className="relative z-10 flex w-full max-w-xs flex-col items-center gap-2 rounded-xl border border-primary-container/40 bg-surface p-4 shadow-[0_0_30px_-10px_#7d56fe]">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary-container/30 bg-primary-container/20 text-primary">
-          <Lock className="h-5 w-5" />
-        </div>
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Escrow Vault</p>
-          <p className="font-headline text-2xl font-bold text-white">0.5 ETH</p>
-          <p className="text-[10px] text-on-surface-variant">Locked on Flow EVM</p>
-        </div>
-        <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/8 bg-surface-high px-3 py-1.5">
-          <ShieldCheck className="h-3 w-3 text-emerald-400" />
-          <span className="text-[10px] font-medium text-emerald-400">Smart contract secured</span>
-        </div>
-      </div>
-      <div className="relative z-10 flex flex-col items-center py-2">
-        <div className="h-6 w-px bg-gradient-to-b from-white/20 to-secondary-container/60" />
-        <p className="my-1 rounded-full border border-secondary-container/30 bg-secondary-container/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-secondary-container">QR Handshake ↓</p>
-        <div className="h-6 w-px bg-gradient-to-b from-secondary-container/60 to-white/20" />
-      </div>
-      <div className="relative z-10 flex w-full max-w-xs items-center gap-3 rounded-xl border border-white/10 bg-surface px-4 py-3">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-secondary-container/20 text-secondary-container">
-          <Users className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-on-surface-variant">Party B</p>
-          <p className="font-mono text-xs text-white/50">0xb4e1…a31d</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <QrCode className="h-3.5 w-3.5 text-on-surface-variant" />
-          <span className="text-xs text-on-surface-variant">Awaiting scan</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function IPhoneMockup() {
   return (
-    <div className="relative flex h-full min-h-[480px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface-high py-8">
-      {/* Ambient glow behind phone */}
+    <div className="relative flex h-full min-h-[480px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface-high py-10">
+      {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-80 w-64 rounded-full bg-primary-container/20 blur-3xl" />
+        <div className="h-96 w-72 rounded-full bg-primary-container/15 blur-3xl" />
       </div>
 
-      {/* iPhone shell */}
-      <div className="relative z-10 flex flex-col" style={{ width: 220 }}>
-        {/* Phone body */}
+      {/* Phone */}
+      <div className="relative z-10" style={{ width: 260 }}>
+        {/* Outer frame */}
         <div
-          className="relative overflow-hidden rounded-[38px] border-[6px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_64px_-16px_rgba(0,0,0,0.8)]"
+          className="relative overflow-hidden"
           style={{
-            borderColor: "#1c1c1e",
-            background: "#000",
-            boxShadow: "0 0 0 1px rgba(255,255,255,0.12), inset 0 0 0 1px rgba(255,255,255,0.04), 0 40px 80px -20px rgba(0,0,0,0.9)",
+            borderRadius: 44,
+            padding: 3,
+            background: "linear-gradient(145deg, #3a3a3c 0%, #1c1c1e 60%, #2a2a2c 100%)",
+            boxShadow: "0 0 0 0.5px rgba(255,255,255,0.08), 0 32px 80px -16px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.1)",
           }}
         >
-          {/* Side buttons (left) */}
-          <div className="absolute -left-[8px] top-[72px] h-8 w-[4px] rounded-l-full bg-[#2a2a2a]" />
-          <div className="absolute -left-[8px] top-[112px] h-12 w-[4px] rounded-l-full bg-[#2a2a2a]" />
-          <div className="absolute -left-[8px] top-[136px] h-12 w-[4px] rounded-l-full bg-[#2a2a2a]" />
-          {/* Power button (right) */}
-          <div className="absolute -right-[8px] top-[100px] h-16 w-[4px] rounded-r-full bg-[#2a2a2a]" />
-
-          {/* Screen bezel top */}
-          <div className="relative bg-black px-0 pt-0">
+          {/* Inner screen */}
+          <div style={{ borderRadius: 42, overflow: "hidden", background: "#000", position: "relative" }}>
             {/* Dynamic Island */}
-            <div className="absolute left-1/2 top-[10px] z-20 h-[14px] w-[60px] -translate-x-1/2 rounded-full bg-black" />
-
-            {/* Screenshot */}
+            <div style={{
+              position: "absolute",
+              top: 12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 120,
+              height: 34,
+              borderRadius: 20,
+              background: "#000",
+              zIndex: 10,
+            }} />
             <Image
               src="/illustrations/app-mobile-screenshot.png"
-              alt="SafeMeet app on mobile"
+              alt="SafeMeet QR handshake on mobile"
               width={390}
               height={844}
               className="w-full"
-              style={{ display: "block", borderRadius: "32px" }}
+              style={{ display: "block" }}
               priority
             />
           </div>
         </div>
 
-        {/* Reflection / label */}
-        <p className="mt-5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+        <p className="mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
           Live on Flow EVM & Base
         </p>
+
+        {/* Feature pills */}
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {[
+            { icon: QrCode, label: "QR Handshake" },
+            { icon: ShieldCheck, label: "Non-custodial" },
+            { icon: Zap, label: "Instant release" },
+          ].map(({ icon: Icon, label }) => (
+            <span
+              key={label}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-surface px-3 py-1 text-[11px] font-medium text-on-surface-variant"
+            >
+              <Icon className="h-3 w-3 text-primary" />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -259,11 +217,6 @@ export default function Home() {
               );
             })}
           </div>
-        </div>
-
-        {/* ── Escrow diagram ── */}
-        <div className="mx-auto w-full max-w-sm">
-          <EscrowDiagram />
         </div>
 
         {/* ── Live stats ── */}
