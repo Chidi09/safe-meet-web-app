@@ -16,19 +16,27 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://safemeet.xyz"),
-  title: "SafeMeet",
-  description: "SafeMeet escrow and pact dashboard",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://safe-meet.click"),
+  title: {
+    default: "SafeMeet — Trustless Escrow for High-Stakes Trades",
+    template: "%s | SafeMeet",
+  },
+  description:
+    "Lock collateral before you meet. Release only after a signed QR handshake or referee approval. No blind trust — built on Base.",
+  keywords: ["escrow", "p2p trade", "blockchain", "base", "crypto", "trustless", "pact", "goal accountability"],
   openGraph: {
-    title: "SafeMeet",
-    description: "Trustless escrow and pact dashboard on Base Sepolia.",
-    images: ["/og.png"],
+    title: "SafeMeet — Trustless Escrow for High-Stakes Trades",
+    description:
+      "Lock collateral before you meet. Release only after a signed QR handshake or referee approval. No blind trust — built on Base.",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "SafeMeet Protocol" }],
     type: "website",
+    siteName: "SafeMeet",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SafeMeet",
-    description: "Trustless escrow and pact dashboard on Base Sepolia.",
+    title: "SafeMeet — Trustless Escrow for High-Stakes Trades",
+    description:
+      "Lock collateral before you meet. Release only after a signed QR handshake or referee approval. No blind trust — built on Base.",
     images: ["/og.png"],
   },
 };

@@ -17,6 +17,10 @@ import { useProfile } from "@/hooks/useProfile";
 import { useWallet } from "@/components/providers";
 import { useEscrowContract } from "@/hooks/useEscrowContract";
 import { ESCROW_CONTRACT_ADDRESS } from "@/lib/escrow-contract";
+import { useEnsResolve } from "@/hooks/useEnsResolve";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const contractReady = !!ESCROW_CONTRACT_ADDRESS && ESCROW_CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 // ------------------------------------------------------------
 // Zod form schema
@@ -46,6 +50,7 @@ export default function CreateGoalPage() {
   const attachOnchainTx = useAttachOnchainTx();
   const { lockFunds, isPending: contractPending } = useEscrowContract();
   const { data: profile } = useProfile(walletAddress ?? undefined);
+  const { resolve: resolveEns, resolving: ensResolving } = useEnsResolve();
 
   const {
     register,
@@ -67,27 +72,43 @@ export default function CreateGoalPage() {
       return;
     }
     try {
-      if (!isAddress(data.counterpartyWallet)) {
-        throw new Error("Referee must be a wallet address for on-chain lock.");
+      // Resolve ENS name to address if needed
+      let referee = data.counterpartyWallet;
+      if (!isAddress(referee)) {
+        const resolved = await resolveEns(referee);
+        if (!resolved) {
+          toast.error("Could not resolve referee address. Enter a valid 0x address or .eth name.");
+          return;
+        }
+        referee = resolved;
       }
+
       const pact = await createPact.mutateAsync({
         type: "GOAL",
         goalDescription: data.goalDescription,
         goalDeadline: new Date(data.goalDeadline).toISOString(),
-        counterpartyWallet: data.counterpartyWallet,
+        counterpartyWallet: referee,
         assetSymbol: data.assetSymbol,
         assetAmount: amount,
       });
-      const txHash = await lockFunds({
-        pactId: pact.id,
-        counterpartyWallet: data.counterpartyWallet,
-        amountEth: amount,
-      });
-      await attachOnchainTx.mutateAsync({
-        id: pact.id,
-        txHash,
-        contractAddress: ESCROW_CONTRACT_ADDRESS ?? "0x0000000000000000000000000000000000000000",
-      });
+
+      if (contractReady && isAddress(referee)) {
+        try {
+          const txHash = await lockFunds({
+            pactId: pact.id,
+            counterpartyWallet: referee as `0x${string}`,
+            amountEth: amount,
+          });
+          await attachOnchainTx.mutateAsync({
+            id: pact.id,
+            txHash,
+            contractAddress: ESCROW_CONTRACT_ADDRESS!,
+          });
+        } catch {
+          toast.warning("On-chain lock skipped — pact saved off-chain.");
+        }
+      }
+
       toast.success("Goal pact created!");
       router.push(`/escrow/waiting-room?pactId=${pact.id}`);
     } catch (error) {
@@ -213,10 +234,10 @@ export default function CreateGoalPage() {
               {/* Submit */}
               <Button
                 onClick={handleSubmit(onSubmit)}
-                disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending}
+                disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending || ensResolving}
                 className="h-12 w-full rounded-lg bg-error-container font-headline text-lg font-bold text-white hover:bg-error-container/90"
               >
-                {createPact.isPending || contractPending || attachOnchainTx.isPending ? "Staking..." : "Stake My Pride and Crypto"}
+                {ensResolving ? "Resolving..." : createPact.isPending || contractPending || attachOnchainTx.isPending ? "Staking..." : "Stake My Pride and Crypto"}
               </Button>
             </CardContent>
           </Card>

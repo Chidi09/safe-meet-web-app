@@ -16,8 +16,12 @@ import { useAttachOnchainTx, useCreatePact } from "@/hooks/usePacts";
 import { useWallet } from "@/components/providers";
 import { useEscrowContract } from "@/hooks/useEscrowContract";
 import { ESCROW_CONTRACT_ADDRESS } from "@/lib/escrow-contract";
+import { useEnsResolve } from "@/hooks/useEnsResolve";
 import { CreateTradePactBodySchema } from "@safe-meet/shared";
 import type { CreateTradePactBody } from "@safe-meet/shared";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const contractReady = !!ESCROW_CONTRACT_ADDRESS && ESCROW_CONTRACT_ADDRESS !== ZERO_ADDRESS;
 
 const ASSET_OPTIONS = ["ETH", "USDC", "DAI"] as const;
 
@@ -28,6 +32,7 @@ export default function CreatePage() {
   const attachOnchainTx = useAttachOnchainTx();
   const { lockFunds, isPending: contractPending } = useEscrowContract();
   const [tradeExpanded, setTradeExpanded] = useState(false);
+  const { resolve: resolveEns, resolving: ensResolving } = useEnsResolve();
 
   const {
     register,
@@ -47,20 +52,35 @@ export default function CreatePage() {
 
   const onTradeSubmit = async (data: CreateTradePactBody) => {
     try {
-      const pact = await createPact.mutateAsync(data);
-      if (!isAddress(data.counterpartyWallet)) {
-        throw new Error("Counterparty must be a wallet address for on-chain lock.");
+      // Resolve ENS name to address if needed
+      let counterparty = data.counterpartyWallet;
+      if (!isAddress(counterparty)) {
+        const resolved = await resolveEns(counterparty);
+        if (!resolved) {
+          toast.error("Could not resolve wallet address. Enter a valid 0x address or .eth name.");
+          return;
+        }
+        counterparty = resolved;
       }
-      const txHash = await lockFunds({
-        pactId: pact.id,
-        counterpartyWallet: data.counterpartyWallet,
-        amountEth: data.assetAmount,
-      });
-      await attachOnchainTx.mutateAsync({
-        id: pact.id,
-        txHash,
-        contractAddress: ESCROW_CONTRACT_ADDRESS ?? "0x0000000000000000000000000000000000000000",
-      });
+      const pact = await createPact.mutateAsync({ ...data, counterpartyWallet: counterparty });
+
+      if (contractReady && isAddress(counterparty)) {
+        try {
+          const txHash = await lockFunds({
+            pactId: pact.id,
+            counterpartyWallet: counterparty as `0x${string}`,
+            amountEth: data.assetAmount,
+          });
+          await attachOnchainTx.mutateAsync({
+            id: pact.id,
+            txHash,
+            contractAddress: ESCROW_CONTRACT_ADDRESS!,
+          });
+        } catch {
+          toast.warning("On-chain lock skipped — pact saved off-chain.");
+        }
+      }
+
       toast.success("Trade pact created!");
       router.push(`/escrow/waiting-room?pactId=${pact.id}`);
     } catch (error) {
@@ -240,10 +260,10 @@ export default function CreatePage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending}
+                      disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending || ensResolving}
                       className="h-11 flex-1 rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
                     >
-                      {createPact.isPending || contractPending || attachOnchainTx.isPending ? "Creating..." : "Create Pact"}
+                      {ensResolving ? "Resolving..." : createPact.isPending || contractPending || attachOnchainTx.isPending ? "Creating..." : "Create Pact"}
                     </Button>
                   </div>
                 </form>
