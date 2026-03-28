@@ -560,7 +560,7 @@ export default function DocsPage() {
               </div>
 
               <div className="space-y-3">
-                {ENDPOINTS.auth.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
+                {ENDPOINTS.auth?.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
               </div>
             </section>
 
@@ -588,7 +588,7 @@ export default function DocsPage() {
               </div>
 
               <div className="space-y-3">
-                {ENDPOINTS.pacts.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
+                {ENDPOINTS.pacts?.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
               </div>
             </section>
 
@@ -604,7 +604,7 @@ export default function DocsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {ENDPOINTS.dashboard.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
+                {ENDPOINTS.dashboard?.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
               </div>
             </section>
 
@@ -620,7 +620,7 @@ export default function DocsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {ENDPOINTS.profile.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
+                {ENDPOINTS.profile?.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
               </div>
             </section>
 
@@ -636,7 +636,7 @@ export default function DocsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {ENDPOINTS.notifications.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
+                {ENDPOINTS.notifications?.map((ep) => <EndpointCard key={ep.path + ep.method} ep={ep} />)}
               </div>
             </section>
 
