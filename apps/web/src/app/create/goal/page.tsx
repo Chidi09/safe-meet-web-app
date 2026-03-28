@@ -16,11 +16,9 @@ import { useAttachOnchainTx, useCreatePact } from "@/hooks/usePacts";
 import { useProfile } from "@/hooks/useProfile";
 import { useWallet } from "@/components/providers";
 import { useEscrowContract } from "@/hooks/useEscrowContract";
-import { ESCROW_CONTRACT_ADDRESS } from "@/lib/escrow-contract";
+import { ESCROW_CONTRACT_ADDRESSES } from "@/lib/escrow-contract";
 import { useEnsResolve } from "@/hooks/useEnsResolve";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const contractReady = !!ESCROW_CONTRACT_ADDRESS && ESCROW_CONTRACT_ADDRESS !== ZERO_ADDRESS;
+import { useChainId } from "wagmi";
 
 // ------------------------------------------------------------
 // Zod form schema
@@ -48,7 +46,8 @@ export default function CreateGoalPage() {
   const { walletAddress } = useWallet();
   const createPact = useCreatePact();
   const attachOnchainTx = useAttachOnchainTx();
-  const { lockFunds, isPending: contractPending } = useEscrowContract();
+  const { lockFunds, isPending: contractPending, contractReady } = useEscrowContract();
+  const chainId = useChainId();
   const { data: profile } = useProfile(walletAddress ?? undefined);
   const { resolve: resolveEns, resolving: ensResolving } = useEnsResolve();
 
@@ -102,7 +101,7 @@ export default function CreateGoalPage() {
           await attachOnchainTx.mutateAsync({
             id: pact.id,
             txHash,
-            contractAddress: ESCROW_CONTRACT_ADDRESS!,
+            contractAddress: ESCROW_CONTRACT_ADDRESSES[chainId]!,
           });
         } catch {
           toast.warning("On-chain lock skipped — pact saved off-chain.");

@@ -1,6 +1,6 @@
 import { parseEther } from "viem";
-import { usePublicClient, useWriteContract } from "wagmi";
-import { ESCROW_CONTRACT_ADDRESS, escrowContractAbi, pactIdToBytes32 } from "@/lib/escrow-contract";
+import { usePublicClient, useWriteContract, useChainId } from "wagmi";
+import { ESCROW_CONTRACT_ADDRESSES, escrowContractAbi, pactIdToBytes32 } from "@/lib/escrow-contract";
 
 type LockFundsInput = {
   pactId: string;
@@ -11,11 +11,14 @@ type LockFundsInput = {
 export function useEscrowContract() {
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+  const chainId = useChainId();
 
   const lockFunds = async ({ pactId, counterpartyWallet, amountEth }: LockFundsInput): Promise<`0x${string}`> => {
-    if (!ESCROW_CONTRACT_ADDRESS) {
-      throw new Error("Missing NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS.");
+    const contractAddress = ESCROW_CONTRACT_ADDRESSES[chainId];
+    if (!contractAddress) {
+      throw new Error(`No escrow contract deployed on chain ${chainId}. Switch to Flow EVM Testnet or Base Sepolia.`);
     }
+    const ESCROW_CONTRACT_ADDRESS = contractAddress;
 
     if (!publicClient) {
       throw new Error("Public client unavailable.");
@@ -37,5 +40,9 @@ export function useEscrowContract() {
     return txHash;
   };
 
-  return { lockFunds, isPending };
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+  const contractAddress = ESCROW_CONTRACT_ADDRESSES[chainId];
+  const contractReady = !!contractAddress && contractAddress !== ZERO_ADDRESS;
+
+  return { lockFunds, isPending, contractReady };
 }

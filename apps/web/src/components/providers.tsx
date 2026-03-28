@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { WagmiProvider, useAccount } from "wagmi";
 import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { baseSepolia } from "viem/chains";
+import { flowEvmTestnet, flowEvmMainnet } from "@/lib/chain";
 import { Toaster } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { clearAuthToken } from "@/lib/api/client";
@@ -20,7 +21,7 @@ const walletConnectProjectId =
 const wagmiConfig = getDefaultConfig({
   appName: "SafeMeet",
   projectId: walletConnectProjectId,
-  chains: [baseSepolia],
+  chains: [flowEvmTestnet, baseSepolia, flowEvmMainnet],
   ssr: false,
 });
 
