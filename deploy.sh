@@ -75,7 +75,11 @@ if ! grep -q "^VAPID_SUBJECT=" "$APP_DIR/.env.api"; then
 fi
 
 if ! grep -q "^NEXT_PUBLIC_APP_URL=" "$APP_DIR/.env.web"; then
-  printf "\nNEXT_PUBLIC_APP_URL=https://app.%s\n" "$DOMAIN" >> "$APP_DIR/.env.web"
+  printf "\nNEXT_PUBLIC_APP_URL=https://%s\n" "$DOMAIN" >> "$APP_DIR/.env.web"
+fi
+
+if ! grep -q "^NEXT_PUBLIC_API_URL=" "$APP_DIR/.env.web"; then
+  printf "\nNEXT_PUBLIC_API_URL=https://api.%s\n" "$DOMAIN" >> "$APP_DIR/.env.web"
 fi
 
 if ! grep -q "^NEXT_PUBLIC_VAPID_PUBLIC_KEY=" "$APP_DIR/.env.web"; then
@@ -166,11 +170,24 @@ fi
 
 echo "[9/12] Writing nginx config..."
 cat > /etc/nginx/sites-available/safe-meet <<EOT
+# ── Web (apex + app subdomain) ─────────────────────────────────
 server {
     listen 80;
     listen [::]:80;
-    server_name app.$DOMAIN;
+    server_name $DOMAIN app.$DOMAIN;
     client_max_body_size 20m;
+
+    # API calls made relative to the web origin also reach Fastify
+    location /api/ {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
 
     location / {
         proxy_pass http://127.0.0.1:${WEB_PORT};
@@ -184,6 +201,7 @@ server {
     }
 }
 
+# ── API subdomain ───────────────────────────────────────────────
 server {
     listen 80;
     listen [::]:80;
@@ -209,9 +227,16 @@ nginx -t
 systemctl reload nginx
 
 echo "[10/12] Provisioning or renewing TLS certificate..."
-if [[ ! -f "/etc/letsencrypt/live/app.$DOMAIN/fullchain.pem" ]]; then
-  certbot --nginx -d "app.$DOMAIN" -d "api.$DOMAIN" --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect
+# Determine which domains need certs
+CERT_DOMAINS="-d $DOMAIN -d app.$DOMAIN -d api.$DOMAIN"
+CERT_LIVE="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+CERT_LIVE_APP="/etc/letsencrypt/live/app.$DOMAIN/fullchain.pem"
+
+if [[ ! -f "$CERT_LIVE" && ! -f "$CERT_LIVE_APP" ]]; then
+  certbot --nginx $CERT_DOMAINS --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect
 else
+  # Expand existing cert to include all domains if needed
+  certbot --nginx $CERT_DOMAINS --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" --redirect --expand 2>/dev/null || \
   certbot renew --quiet --deploy-hook "systemctl reload nginx"
 fi
 
