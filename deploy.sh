@@ -24,6 +24,13 @@ echo "[1/12] Updating source..."
 git fetch origin main
 git reset --hard origin/main
 
+# Bash caches scripts before execution, so the rest of this script runs from
+# the OLD version even after git reset. Re-exec with the updated file once.
+if [[ "${_DEPLOY_RESTARTED:-}" != "1" ]]; then
+  export _DEPLOY_RESTARTED=1
+  exec bash "$APP_DIR/deploy.sh"
+fi
+
 ACTIVE="none"
 if [[ -f "$ACTIVE_FILE" ]]; then
   ACTIVE=$(cat "$ACTIVE_FILE")
