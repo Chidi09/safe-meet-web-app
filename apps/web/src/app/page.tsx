@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import { QrCode, ShieldCheck, ArrowRight, Zap, Users, Target, CheckCircle } from "lucide-react";
+import { Lock, QrCode, ShieldCheck, ArrowRight, Zap, Users, Target, CheckCircle } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
