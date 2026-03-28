@@ -59,43 +59,181 @@ const FLOW = [
   },
 ];
 
-function IPhoneMockup() {
+function IPhoneStatusBar() {
   return (
-    <div className="relative flex h-full min-h-[480px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface-high py-10">
+    <div
+      className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-6"
+      style={{ height: 50 }}
+    >
+      {/* Time */}
+      <span className="text-[13px] font-semibold text-white" style={{ letterSpacing: "0.01em" }}>
+        9:41
+      </span>
+      {/* Right icons — signal, wifi, battery */}
+      <div className="flex items-center gap-1">
+        {/* Cellular signal */}
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
+          <rect x="0" y="9" width="3" height="3" rx="0.5" fill="white" />
+          <rect x="4.5" y="6" width="3" height="6" rx="0.5" fill="white" />
+          <rect x="9" y="3" width="3" height="9" rx="0.5" fill="white" />
+          <rect x="13.5" y="0" width="3" height="12" rx="0.5" fill="white" />
+        </svg>
+        {/* WiFi */}
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+          <path d="M8 10.5a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5z" fill="white" transform="translate(0,-2)" />
+          <path d="M5.05 9.05a4.24 4.24 0 015.9 0" stroke="white" strokeWidth="1.3" strokeLinecap="round" transform="translate(0,-2)" />
+          <path d="M2.1 6.1a8.49 8.49 0 0111.8 0" stroke="white" strokeWidth="1.3" strokeLinecap="round" transform="translate(0,-2)" />
+        </svg>
+        {/* Battery */}
+        <svg width="27" height="12" viewBox="0 0 27 12" fill="none">
+          <rect x="0" y="0.5" width="22" height="11" rx="2" stroke="white" strokeOpacity="0.35" strokeWidth="1" />
+          <rect x="1.5" y="2" width="19" height="8" rx="1" fill="white" />
+          <path d="M23 4v4a2 2 0 000-4z" fill="white" fillOpacity="0.4" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function IPhoneMockup() {
+  /* ---------- dimensions based on iPhone 15 Pro proportions ---------- */
+  const phoneWidth = 272;
+  const frameThickness = 4;
+  const screenWidth = phoneWidth - frameThickness * 2;
+  const screenAspect = 2556 / 1179;            // iPhone 15 Pro native
+  const screenHeight = screenWidth * screenAspect;
+  const phoneHeight = screenHeight + frameThickness * 2;
+  const outerRadius = 52;
+  const innerRadius = outerRadius - frameThickness;
+
+  return (
+    <div className="relative flex h-full min-h-[520px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-surface-high py-10">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="h-96 w-72 rounded-full bg-primary-container/15 blur-3xl" />
+        <div className="h-96 w-80 rounded-full bg-primary-container/20 blur-3xl" />
       </div>
 
-      {/* Phone */}
-      <div className="relative z-10" style={{ width: 260 }}>
-        {/* Outer frame */}
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Phone body */}
         <div
-          className="relative overflow-hidden"
+          className="relative"
           style={{
-            borderRadius: 44,
-            padding: 3,
-            background: "linear-gradient(145deg, #3a3a3c 0%, #1c1c1e 60%, #2a2a2c 100%)",
-            boxShadow: "0 0 0 0.5px rgba(255,255,255,0.08), 0 32px 80px -16px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.1)",
+            width: phoneWidth,
+            height: phoneHeight,
+            borderRadius: outerRadius,
+            /* Titanium frame — multi-layer to simulate metal */
+            background: "linear-gradient(160deg, #48484a 0%, #2c2c2e 25%, #1c1c1e 50%, #2c2c2e 75%, #3a3a3c 100%)",
+            boxShadow: [
+              "0 0 0 0.5px rgba(255,255,255,0.12)",                       // highlight edge
+              "inset 0 1px 0 rgba(255,255,255,0.15)",                      // top bevel
+              "inset 0 -1px 0 rgba(0,0,0,0.3)",                           // bottom bevel
+              "0 40px 100px -20px rgba(0,0,0,0.95)",                       // deep shadow
+              "0 6px 24px -4px rgba(0,0,0,0.7)",                          // mid shadow
+            ].join(", "),
           }}
         >
-          {/* Inner screen */}
-          <div style={{ borderRadius: 42, overflow: "hidden", background: "#000", position: "relative" }}>
-            {/* Dynamic Island */}
-            <div style={{
-              position: "absolute",
-              top: 12,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 120,
-              height: 34,
-              borderRadius: 20,
+          {/* ── Side buttons ── */}
+          {/* Silent switch (left) */}
+          <div
+            className="absolute"
+            style={{
+              left: -2.5,
+              top: 100,
+              width: 3,
+              height: 18,
+              borderRadius: "2px 0 0 2px",
+              background: "linear-gradient(180deg, #48484a 0%, #2c2c2e 100%)",
+              boxShadow: "-1px 0 2px rgba(0,0,0,0.5)",
+            }}
+          />
+          {/* Volume up (left) */}
+          <div
+            className="absolute"
+            style={{
+              left: -2.5,
+              top: 140,
+              width: 3,
+              height: 36,
+              borderRadius: "2px 0 0 2px",
+              background: "linear-gradient(180deg, #48484a 0%, #2c2c2e 100%)",
+              boxShadow: "-1px 0 2px rgba(0,0,0,0.5)",
+            }}
+          />
+          {/* Volume down (left) */}
+          <div
+            className="absolute"
+            style={{
+              left: -2.5,
+              top: 186,
+              width: 3,
+              height: 36,
+              borderRadius: "2px 0 0 2px",
+              background: "linear-gradient(180deg, #48484a 0%, #2c2c2e 100%)",
+              boxShadow: "-1px 0 2px rgba(0,0,0,0.5)",
+            }}
+          />
+          {/* Power button (right) */}
+          <div
+            className="absolute"
+            style={{
+              right: -2.5,
+              top: 154,
+              width: 3,
+              height: 50,
+              borderRadius: "0 2px 2px 0",
+              background: "linear-gradient(180deg, #48484a 0%, #2c2c2e 100%)",
+              boxShadow: "1px 0 2px rgba(0,0,0,0.5)",
+            }}
+          />
+
+          {/* ── Screen ── */}
+          <div
+            className="absolute overflow-hidden"
+            style={{
+              top: frameThickness,
+              left: frameThickness,
+              width: screenWidth,
+              height: screenHeight,
+              borderRadius: innerRadius,
               background: "#000",
-              zIndex: 10,
-            }} />
+            }}
+          >
+            {/* iOS status bar */}
+            <IPhoneStatusBar />
+
+            {/* Dynamic Island */}
+            <div
+              className="absolute z-30"
+              style={{
+                top: 10,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 120,
+                height: 34,
+                borderRadius: 20,
+                background: "#000",
+              }}
+            >
+              {/* Front camera dot */}
+              <div
+                className="absolute"
+                style={{
+                  right: 20,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle at 40% 40%, #1a1a2e 0%, #0a0a12 100%)",
+                  boxShadow: "inset 0 0 2px rgba(255,255,255,0.08)",
+                }}
+              />
+            </div>
+
+            {/* App screenshot */}
             <Image
-              src="/illustrations/app-mobile-screenshot.png"
-              alt="SafeMeet QR handshake on mobile"
+              src="/illustrations/handshake-mobile.png"
+              alt="SafeMeet QR handshake flow on iPhone"
               width={390}
               height={844}
               className="w-full"
@@ -105,12 +243,13 @@ function IPhoneMockup() {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
-          Live on Flow EVM & Base
+        {/* Caption */}
+        <p className="mt-5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+          Live on Flow EVM & Base Sepolia
         </p>
 
         {/* Feature pills */}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
           {[
             { icon: QrCode, label: "QR Handshake" },
             { icon: ShieldCheck, label: "Non-custodial" },
