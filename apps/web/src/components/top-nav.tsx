@@ -45,10 +45,9 @@ function AccountMenu({ walletAddress }: { walletAddress: string }) {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
+    if (!open) return;
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open, handleClickOutside]);
 
   const handleCopyAddress = async () => {
