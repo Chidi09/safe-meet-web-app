@@ -4,6 +4,7 @@ import { Clock3, Handshake, ShieldCheck, Wallet, ArrowRight, Share2 } from "luci
 import Link from "next/link";
 import { toast } from "sonner";
 import { PageFrame } from "@/components/page-frame";
+import { AuthGuard } from "@/components/auth-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -217,6 +218,7 @@ export default function DashboardPage() {
   const historyRows = historyData?.data ?? [];
 
   return (
+    <AuthGuard activeHref="/dashboard">
     <PageFrame activeHref="/dashboard" showSidebar>
       <section className="section-wrap space-y-8">
         <header className="space-y-2">
@@ -226,7 +228,7 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        {/* Disconnected state */}
+        {/* Disconnected state — kept as fallback in case AuthGuard allows through with stale token */}
         {!walletAddress && (
           <Card className="bg-surface text-white shadow-[0_0_50px_-20px_#7d56fe]">
             <CardHeader className="items-center text-center py-12">
@@ -418,5 +420,6 @@ export default function DashboardPage() {
         )}
       </section>
     </PageFrame>
+    </AuthGuard>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Download, Search } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
+import { AuthGuard } from "@/components/auth-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,6 +115,7 @@ export default function HistoryPage() {
   };
 
   return (
+    <AuthGuard activeHref="/history">
     <PageFrame activeHref="/history" showSidebar>
       <section className="section-wrap space-y-7">
         <header className="flex flex-wrap items-end justify-between gap-4">
@@ -318,5 +320,6 @@ export default function HistoryPage() {
         )}
       </section>
     </PageFrame>
+    </AuthGuard>
   );
 }

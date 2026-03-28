@@ -37,6 +37,18 @@ export function clearAuthToken(): void {
   }
 }
 
+/**
+ * Redirect to /connect when auth is fully expired and unrecoverable.
+ * Called by the request pipeline after token refresh also fails.
+ */
+function redirectToConnect(): void {
+  if (typeof window === "undefined") return;
+  // Avoid redirect loops if already on /connect
+  if (window.location.pathname.startsWith("/connect")) return;
+  const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.href = `/connect?returnTo=${returnTo}`;
+}
+
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -187,6 +199,8 @@ async function request<T>(
       if (newToken) {
         return request<T>(path, { ...options, _retried: true });
       }
+      // Token refresh failed — session is dead, redirect to sign-in
+      redirectToConnect();
     }
 
     throw new ApiRequestError({

@@ -85,6 +85,11 @@ function AuthWatcher() {
     wasConnectedRef.current = false;
     void authApi.logout().catch(() => undefined).finally(() => {
       clearAuthToken();
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("safemeet_jwt_wallet");
+        // Dispatch storage event so nav/guards pick up auth change
+        window.dispatchEvent(new Event("storage"));
+      }
       queryClient.clear();
     });
   }, [isConnected, queryClient]);

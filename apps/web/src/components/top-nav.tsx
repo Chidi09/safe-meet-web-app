@@ -134,7 +134,13 @@ export function TopNav({ activeHref }: TopNavProps) {
     setAuthed(hasAuthToken());
     const onStorage = () => setAuthed(hasAuthToken());
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    // Also poll briefly since localStorage changes in the same tab
+    // don't fire the storage event natively
+    const poll = setInterval(() => setAuthed(hasAuthToken()), 1000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      clearInterval(poll);
+    };
   }, []);
 
   // Re-check auth state when wallet changes

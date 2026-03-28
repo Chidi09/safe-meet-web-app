@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Laptop, Shield, Smartphone, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageFrame } from "@/components/page-frame";
+import { AuthGuard } from "@/components/auth-guard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,7 @@ export default function SettingsPage() {
   };
 
   return (
+    <AuthGuard activeHref="/settings">
     <PageFrame activeHref="/settings" showSidebar>
       <section className="section-wrap space-y-7">
         <header>
@@ -529,5 +531,6 @@ export default function SettingsPage() {
         )}
       </section>
     </PageFrame>
+    </AuthGuard>
   );
 }

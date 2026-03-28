@@ -38,9 +38,17 @@ export function useAuth() {
     if (typeof window !== "undefined") {
       const storedWallet = localStorage.getItem(TOKEN_WALLET_KEY);
       const storedToken = localStorage.getItem(TOKEN_KEY);
+
       if (storedToken && storedWallet === address.toLowerCase()) {
+        // Token matches current wallet — reuse it
         authenticatedAddressRef.current = address;
         return;
+      }
+
+      if (storedToken && storedWallet && storedWallet !== address.toLowerCase()) {
+        // Wallet changed — clear stale token for the old wallet
+        clearAuthToken();
+        localStorage.removeItem(TOKEN_WALLET_KEY);
       }
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { ShieldCheck, Zap, Lock, QrCode, Target } from "lucide-react";
 import { useWallet } from "@/components/providers";
@@ -29,18 +29,22 @@ const CAPABILITIES = [
 
 export default function ConnectPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isConnected } = useWallet();
+  const returnTo = searchParams.get("returnTo");
 
   useEffect(() => {
     if (!isConnected) return;
     const timer = setInterval(() => {
       if (hasAuthToken()) {
         clearInterval(timer);
-        router.replace("/dashboard");
+        // Redirect to returnTo if provided, otherwise dashboard
+        const destination = returnTo && returnTo.startsWith("/") ? returnTo : "/dashboard";
+        router.replace(destination);
       }
     }, 300);
     return () => clearInterval(timer);
-  }, [isConnected, router]);
+  }, [isConnected, router, returnTo]);
 
   return (
     <PageFrame activeHref={undefined}>
