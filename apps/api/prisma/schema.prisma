@@ -74,8 +74,34 @@ model Pact {
 
   @@index([creatorWallet])
   @@index([counterpartyWallet])
+  @@index([creatorWallet, createdAt, id])
+  @@index([counterpartyWallet, createdAt, id])
   @@index([status])
   @@index([type])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  wallet    String
+  title     String   @db.VarChar(120)
+  body      String   @db.VarChar(500)
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([wallet, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  wallet    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([wallet])
 }
 
 // ------------------------------------------------------------
@@ -95,6 +121,9 @@ model Profile {
 
   trustScore     Int?
   joinedAt       DateTime @default(now())
+
+  totpSecret     String?
+  totpEnabled    Boolean  @default(false)
 }
 
 // ------------------------------------------------------------

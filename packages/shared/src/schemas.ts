@@ -103,6 +103,8 @@ export const CreateTradePactBodySchema = z.object({
   scheduledAt: ISODateSchema.optional(),
   assetSymbol: AssetSymbolSchema,
   assetAmount: z.number().positive("Amount must be greater than 0"),
+  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  contractAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
 });
 
 export const CreateGoalPactBodySchema = z.object({
@@ -112,6 +114,8 @@ export const CreateGoalPactBodySchema = z.object({
   counterpartyWallet: WalletSchema,   // referee
   assetSymbol: AssetSymbolSchema,
   assetAmount: z.number().positive("Amount must be greater than 0"),
+  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
+  contractAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
 });
 
 /** Union that the POST /api/pacts handler validates against */
@@ -173,6 +177,7 @@ export const ProfileSchema = z.object({
 
   trustScore: z.number().int().min(0).max(1000).optional(),
   joinedAt: ISODateSchema,
+  totpEnabled: z.boolean().optional(),
 });
 
 export const UpdateProfileBodySchema = z.object({
@@ -212,6 +217,7 @@ export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =
     page: z.number().int().positive(),
     limit: z.number().int().positive(),
     hasMore: z.boolean(),
+    nextCursor: z.string().optional(),
   });
 
 export const HistoryListSchema = PaginatedResponseSchema(PactSchema);
@@ -232,6 +238,7 @@ export const HistoryFiltersSchema = z.object({
   wallet: z.string(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
+  cursor: z.string().optional(),
   type: PactTypeSchema.optional(),
   status: PactStatusSchema.optional(),
   from: z.string().optional(),

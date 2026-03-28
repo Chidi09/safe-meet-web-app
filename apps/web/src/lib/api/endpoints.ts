@@ -95,6 +95,20 @@ export const pactsApi = {
     const raw = await apiClient.post("/api/pacts/verify-qr", { nonce, pactId });
     return PactSchema.parse(raw);
   },
+
+  attachOnchainTx: async (id: string, txHash: string, contractAddress: string): Promise<Pact> => {
+    const raw = await apiClient.patch(`/api/pacts/${id}/onchain`, { txHash, contractAddress });
+    return PactSchema.parse(raw);
+  },
+
+  accept: async (id: string): Promise<Pact> => {
+    const raw = await apiClient.post(`/api/pacts/${id}/accept`);
+    return PactSchema.parse(raw);
+  },
+};
+
+export const authApi = {
+  logout: async (): Promise<{ success: boolean }> => apiClient.post("/api/auth/logout"),
 };
 
 // ------------------------------------------------------------
@@ -140,4 +154,44 @@ export const sessionsApi = {
     const raw = await apiClient.get("/api/sessions");
     return SessionListSchema.parse(raw);
   },
+
+  /** DELETE /api/sessions/:id */
+  revoke: async (id: string): Promise<{ success: boolean }> =>
+    apiClient.delete(`/api/sessions/${id}`),
+};
+
+// ------------------------------------------------------------
+// TOTP 2FA
+// ------------------------------------------------------------
+
+export const totpApi = {
+  setup: async (): Promise<{ otpauthUrl: string }> =>
+    apiClient.post("/api/auth/2fa/setup"),
+
+  confirm: async (token: string): Promise<{ success: boolean }> =>
+    apiClient.post("/api/auth/2fa/confirm", { token }),
+
+  disable: async (token: string): Promise<{ success: boolean }> =>
+    apiClient.post("/api/auth/2fa/disable", { token }),
+};
+
+export type AppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  link?: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export const notificationsApi = {
+  list: async (cursor?: string): Promise<{ data: AppNotification[]; hasMore: boolean; nextCursor?: string | null; unread: number }> =>
+    apiClient.get("/api/notifications", { limit: 20, ...(cursor ? { cursor } : {}) }),
+
+  markRead: async (id: string): Promise<{ success: boolean }> => apiClient.patch(`/api/notifications/${id}/read`),
+
+  markAllRead: async (): Promise<{ success: boolean }> => apiClient.patch("/api/notifications/read-all"),
+
+  subscribePush: async (payload: { endpoint: string; p256dh: string; auth: string }): Promise<{ success: boolean }> =>
+    apiClient.post("/api/notifications/subscribe", payload),
 };

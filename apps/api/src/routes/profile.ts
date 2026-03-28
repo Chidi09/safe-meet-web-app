@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../plugins/auth.js";
+import { normalizeWalletAddress } from "../lib/wallet.js";
 import {
   ProfileSchema,
   UpdateProfileBodySchema,
@@ -36,6 +37,7 @@ function mapProfile(row: PrismaProfile): Profile {
     successRate: row.successRate,
     trustScore: row.trustScore ?? undefined,
     joinedAt: row.joinedAt.toISOString(),
+    totpEnabled: row.totpEnabled,
   };
 }
 
@@ -58,23 +60,24 @@ export default async function profileRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { wallet } = request.params;
+      const normalizedWallet = normalizeWalletAddress(wallet);
 
       // Aggregate pact stats for this wallet.
       const [totalPacts, completedPacts, disputedPacts] = await Promise.all([
         prisma.pact.count({
           where: {
-            OR: [{ creatorWallet: wallet }, { counterpartyWallet: wallet }],
+            OR: [{ creatorWallet: normalizedWallet }, { counterpartyWallet: normalizedWallet }],
           },
         }),
         prisma.pact.count({
           where: {
-            OR: [{ creatorWallet: wallet }, { counterpartyWallet: wallet }],
+            OR: [{ creatorWallet: normalizedWallet }, { counterpartyWallet: normalizedWallet }],
             status: "COMPLETE",
           },
         }),
         prisma.pact.count({
           where: {
-            OR: [{ creatorWallet: wallet }, { counterpartyWallet: wallet }],
+            OR: [{ creatorWallet: normalizedWallet }, { counterpartyWallet: normalizedWallet }],
             status: "DISPUTED",
           },
         }),
@@ -87,9 +90,9 @@ export default async function profileRoutes(fastify: FastifyInstance) {
 
       // Upsert: create profile if it doesn't exist yet, then update stats.
       const row = await prisma.profile.upsert({
-        where: { wallet },
+        where: { wallet: normalizedWallet },
         create: {
-          wallet,
+          wallet: normalizedWallet,
           totalPacts,
           completedPacts,
           disputedPacts,
@@ -123,6 +126,7 @@ export default async function profileRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { wallet } = request.params;
+      const normalizedWallet = normalizeWalletAddress(wallet);
       const authenticatedWallet = request.walletAddress;
 
       if (authenticatedWallet === null) {
@@ -130,20 +134,20 @@ export default async function profileRoutes(fastify: FastifyInstance) {
       }
 
       // Users can only update their own profile
-      if (wallet.toLowerCase() !== authenticatedWallet.toLowerCase()) {
+      if (normalizedWallet !== authenticatedWallet) {
         return reply.forbidden("You can only update your own profile.");
       }
 
       // Ensure profile exists before updating.
-      const existing = await prisma.profile.findUnique({ where: { wallet } });
+      const existing = await prisma.profile.findUnique({ where: { wallet: normalizedWallet } });
       if (!existing) {
-        return reply.notFound(`Profile for wallet ${wallet} not found.`);
+        return reply.notFound(`Profile for wallet ${normalizedWallet} not found.`);
       }
 
       const { displayName, email, avatarUrl } = request.body;
 
       const row = await prisma.profile.update({
-        where: { wallet },
+        where: { wallet: normalizedWallet },
         data: {
           ...(displayName !== undefined ? { displayName } : {}),
           ...(email !== undefined ? { email } : {}),

@@ -5,7 +5,7 @@
 // ============================================================
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { profileApi, sessionsApi } from "@/lib/api/endpoints";
+import { profileApi, sessionsApi, totpApi } from "@/lib/api/endpoints";
 import { profileKeys } from "@/hooks/useProfile";
 import type { Profile, Session } from "@/lib/types";
 
@@ -57,6 +57,51 @@ export function useSettings(wallet: string | undefined) {
       sessions.refetch();
     },
   };
+}
+
+// ------------------------------------------------------------
+// Revoke session mutation
+// ------------------------------------------------------------
+
+export function useRevokeSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ success: boolean }, Error, string>({
+    mutationFn: (id) => sessionsApi.revoke(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+    },
+  });
+}
+
+// ------------------------------------------------------------
+// TOTP mutations
+// ------------------------------------------------------------
+
+export function useTotpSetup() {
+  return useMutation<{ otpauthUrl: string }, Error, void>({
+    mutationFn: () => totpApi.setup(),
+  });
+}
+
+export function useTotpConfirm() {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, string>({
+    mutationFn: (token) => totpApi.confirm(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useTotpDisable() {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, string>({
+    mutationFn: (token) => totpApi.disable(token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
 }
 
 // ------------------------------------------------------------

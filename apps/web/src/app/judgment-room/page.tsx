@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ export default function JudgmentRoomPage() {
 
   const { data: pact, isLoading, isError, refetch } = usePact(pactId);
   const updateStatus = useUpdatePactStatus();
+  const [imageFailed, setImageFailed] = useState(false);
 
   const handleApprove = async () => {
     if (!pactId) return;
@@ -45,7 +47,7 @@ export default function JudgmentRoomPage() {
   const handleReject = async () => {
     if (!pactId) return;
     await updateStatus.mutateAsync({ id: pactId, status: "DISPUTED" });
-    router.push("/dashboard");
+    router.push(`/dispute?pactId=${pactId}`);
   };
 
   return (
@@ -92,12 +94,20 @@ export default function JudgmentRoomPage() {
 
             {/* Proof image placeholder */}
             <div className="aspect-video rounded-lg border border-outline-variant/30 bg-surface-high">
-              {pact?.proofUrl && pact.proofUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+              {pact?.proofUrl && pact.proofUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && !imageFailed && (
                 <img
                   src={pact.proofUrl}
                   alt="Proof"
                   className="h-full w-full rounded-lg object-cover"
+                  onError={() => setImageFailed(true)}
                 />
+              )}
+              {pact?.proofUrl && imageFailed && (
+                <div className="flex h-full items-center justify-center">
+                  <a href={pact.proofUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white">
+                    View Link
+                  </a>
+                </div>
               )}
             </div>
 
