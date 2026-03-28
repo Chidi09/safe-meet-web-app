@@ -170,9 +170,12 @@ export default function DisputePage() {
                     </ul>
                   </div>
 
-                  <Button asChild className="h-11 w-full rounded-lg bg-surface-high text-sm font-bold text-white hover:bg-surface-highest">
-                    <Link href="/history">View in History</Link>
-                  </Button>
+                  <Link
+                    href="/history"
+                    className="flex h-11 w-full items-center justify-center rounded-lg bg-surface-high text-sm font-bold text-white hover:bg-surface-highest"
+                  >
+                    View in History
+                  </Link>
                 </CardContent>
               </Card>
             </div>
