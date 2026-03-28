@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { isAddress } from "viem";
 import { PageFrame } from "@/components/page-frame";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCreatePact } from "@/hooks/usePacts";
+import { useAttachOnchainTx, useCreatePact } from "@/hooks/usePacts";
 import { useWallet } from "@/components/providers";
+import { useEscrowContract } from "@/hooks/useEscrowContract";
+import { ESCROW_CONTRACT_ADDRESS } from "@/lib/escrow-contract";
 import { CreateTradePactBodySchema } from "@safe-meet/shared";
 import type { CreateTradePactBody } from "@safe-meet/shared";
 
@@ -21,6 +25,8 @@ export default function CreatePage() {
   const router = useRouter();
   const { walletAddress } = useWallet();
   const createPact = useCreatePact();
+  const attachOnchainTx = useAttachOnchainTx();
+  const { lockFunds, isPending: contractPending } = useEscrowContract();
   const [tradeExpanded, setTradeExpanded] = useState(false);
 
   const {
@@ -42,10 +48,23 @@ export default function CreatePage() {
   const onTradeSubmit = async (data: CreateTradePactBody) => {
     try {
       const pact = await createPact.mutateAsync(data);
+      if (!isAddress(data.counterpartyWallet)) {
+        throw new Error("Counterparty must be a wallet address for on-chain lock.");
+      }
+      const txHash = await lockFunds({
+        pactId: pact.id,
+        counterpartyWallet: data.counterpartyWallet,
+        amountEth: data.assetAmount,
+      });
+      await attachOnchainTx.mutateAsync({
+        id: pact.id,
+        txHash,
+        contractAddress: ESCROW_CONTRACT_ADDRESS ?? "0x0000000000000000000000000000000000000000",
+      });
       toast.success("Trade pact created!");
       router.push(`/escrow/waiting-room?pactId=${pact.id}`);
-    } catch {
-      toast.error("Failed to create pact");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create pact");
     }
   };
 
@@ -71,9 +90,15 @@ export default function CreatePage() {
         </header>
 
         {!walletAddress && (
-          <p className="text-center text-sm text-on-surface-variant">
-            Connect your wallet to create a pact.
-          </p>
+          <div className="mx-auto max-w-sm rounded-2xl border border-primary-container/30 bg-surface p-8 text-center shadow-[0_0_50px_-20px_#7d56fe]">
+            <p className="text-sm text-on-surface-variant">You need to connect your wallet before creating a pact.</p>
+            <Link
+              href="/connect"
+              className="mt-4 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
+            >
+              Connect Wallet
+            </Link>
+          </div>
         )}
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -215,10 +240,10 @@ export default function CreatePage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={!walletAddress || createPact.isPending}
+                      disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending}
                       className="h-11 flex-1 rounded-lg bg-primary-container text-sm font-bold text-white hover:bg-primary-container/90"
                     >
-                      {createPact.isPending ? "Creating..." : "Create Pact"}
+                      {createPact.isPending || contractPending || attachOnchainTx.isPending ? "Creating..." : "Create Pact"}
                     </Button>
                   </div>
                 </form>

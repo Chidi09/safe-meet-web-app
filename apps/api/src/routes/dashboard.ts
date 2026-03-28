@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { DashboardStatsSchema } from "@safe-meet/shared";
 import type { DashboardStats } from "@safe-meet/shared";
+import { normalizeWalletAddress } from "../lib/wallet.js";
 
 const DashboardQuerySchema = z.object({
   wallet: z.string().optional(),
@@ -28,13 +29,20 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { wallet } = request.query;
+      const normalizedWallet = wallet ? normalizeWalletAddress(wallet) : undefined;
+
+      if (!normalizedWallet) {
+        reply.header("Cache-Control", "public, max-age=20, stale-while-revalidate=60");
+      } else {
+        reply.header("Cache-Control", "private, no-store");
+      }
 
       // Build a where clause scoped to the wallet when provided.
-      const walletWhere = wallet
+      const walletWhere = normalizedWallet
         ? {
             OR: [
-              { creatorWallet: wallet },
-              { counterpartyWallet: wallet },
+              { creatorWallet: normalizedWallet },
+              { counterpartyWallet: normalizedWallet },
             ],
           }
         : {};
@@ -60,28 +68,14 @@ export default async function dashboardRoutes(fastify: FastifyInstance) {
 
       const tvl = tvlResult._sum.assetAmount ?? 0;
 
-      // When the wallet has no pacts at all, return realistic-looking
-      // mock stats so the dashboard isn't empty on first visit.
-      const hasActivity =
-        completedPacts + activePacts + proofSubmittedPacts > 0;
-
-      const stats: DashboardStats = hasActivity
-        ? {
-            totalValueLocked: tvl,
-            totalValueLockedFormatted: `${tvl.toFixed(4)} ETH`,
-            tvlChangePercent: 0, // would require historical snapshot to compute
-            completedTrades: completedPacts,
-            activeEscrows: activePacts,
-            awaitingVerification: proofSubmittedPacts,
-          }
-        : {
-            totalValueLocked: 0,
-            totalValueLockedFormatted: "0 ETH",
-            tvlChangePercent: 0,
-            completedTrades: 0,
-            activeEscrows: 0,
-            awaitingVerification: 0,
-          };
+      const stats: DashboardStats = {
+        totalValueLocked: tvl,
+        totalValueLockedFormatted: `${tvl.toFixed(4)} ETH`,
+        tvlChangePercent: 0,
+        completedTrades: completedPacts,
+        activeEscrows: activePacts,
+        awaitingVerification: proofSubmittedPacts,
+      };
 
       return reply.send(stats);
     },

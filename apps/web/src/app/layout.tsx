@@ -16,8 +16,21 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://safemeet.xyz"),
   title: "SafeMeet",
   description: "SafeMeet escrow and pact dashboard",
+  openGraph: {
+    title: "SafeMeet",
+    description: "Trustless escrow and pact dashboard on Base Sepolia.",
+    images: ["/og.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SafeMeet",
+    description: "Trustless escrow and pact dashboard on Base Sepolia.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({

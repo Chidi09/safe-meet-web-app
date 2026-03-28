@@ -27,6 +27,8 @@ export function useDashboardStats(wallet: string | undefined) {
     queryFn: () => dashboardApi.getStats(wallet!),
     enabled: !!wallet,                  // don't fetch if wallet disconnected
     staleTime: 30_000,                  // 30s before refetch
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
     retry: 2,
   });
 }
@@ -47,6 +49,8 @@ export function usePendingPacts(wallet: string | undefined) {
       }),
     enabled: !!wallet,
     staleTime: 15_000,                  // 15s — more frequently updated
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
     retry: 2,
   });
 }

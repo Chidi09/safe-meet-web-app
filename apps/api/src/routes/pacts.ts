@@ -15,6 +15,8 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { mapPact, mapPacts } from "../lib/mappers.js";
 import { requireAuth } from "../plugins/auth.js";
+import { normalizeWalletAddress } from "../lib/wallet.js";
+import { notifyWallet } from "../lib/notifications.js";
 import {
   PactFiltersSchema,
   HistoryFiltersSchema,
@@ -43,6 +45,31 @@ import type { Pact as PrismaPact } from "@prisma/client";
 
 const PactIdParamSchema = z.object({ id: z.string().uuid() });
 type PactIdParam = z.infer<typeof PactIdParamSchema>;
+
+const OnchainUpdateBodySchema = z.object({
+  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  contractAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+});
+type OnchainUpdateBody = z.infer<typeof OnchainUpdateBodySchema>;
+
+function validateProofUrl(url: string): { ok: boolean; message?: string } {
+  if (url.length > 2000) {
+    return { ok: false, message: "Proof URL must be 2000 characters or less." };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { ok: false, message: "Proof URL must be a valid URL." };
+  }
+
+  if (parsed.protocol !== "https:") {
+    return { ok: false, message: "Proof URL must use HTTPS." };
+  }
+
+  return { ok: true };
+}
 
 // ------------------------------------------------------------
 // Authorization helpers
@@ -131,16 +158,17 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const { wallet, type, status, page, limit } = request.query;
+      const normalizedWallet = wallet ? normalizeWalletAddress(wallet) : undefined;
 
       const skip = (page - 1) * limit;
 
       const rows = await prisma.pact.findMany({
         where: {
-          ...(wallet !== undefined
+          ...(normalizedWallet !== undefined
             ? {
                 OR: [
-                  { creatorWallet: wallet },
-                  { counterpartyWallet: wallet },
+                  { creatorWallet: normalizedWallet },
+                  { counterpartyWallet: normalizedWallet },
                 ],
               }
             : {}),
@@ -168,12 +196,13 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { wallet, page, limit, type, status, from, to } = request.query;
+      const { wallet, page, limit, cursor, type, status, from, to } = request.query;
+      const normalizedWallet = normalizeWalletAddress(wallet);
 
       const skip = (page - 1) * limit;
 
-      const where = {
-        OR: [{ creatorWallet: wallet }, { counterpartyWallet: wallet }],
+      const baseWhere = {
+        OR: [{ creatorWallet: normalizedWallet }, { counterpartyWallet: normalizedWallet }],
         ...(type !== undefined ? { type } : {}),
         ...(status !== undefined ? { status } : {}),
         ...(from !== undefined || to !== undefined
@@ -186,22 +215,66 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
           : {}),
       };
 
-      const [rows, total] = await Promise.all([
+      let cursorFilter:
+        | {
+            OR: Array<
+              | { createdAt: { lt: Date } }
+              | { AND: [{ createdAt: Date }, { id: { lt: string } }] }
+            >;
+          }
+        | undefined;
+
+      if (cursor) {
+        try {
+          const decoded = JSON.parse(Buffer.from(cursor, "base64").toString("utf8")) as {
+            createdAt: string;
+            id: string;
+          };
+
+          cursorFilter = {
+            OR: [
+              { createdAt: { lt: new Date(decoded.createdAt) } },
+              { AND: [{ createdAt: new Date(decoded.createdAt) }, { id: { lt: decoded.id } }] },
+            ],
+          };
+        } catch {
+          return reply.badRequest("Invalid cursor.");
+        }
+      }
+
+      const where = cursorFilter ? { AND: [baseWhere, cursorFilter] } : baseWhere;
+
+      const [rowsWithOneExtra, total] = await Promise.all([
         prisma.pact.findMany({
           where,
-          orderBy: { createdAt: "desc" },
-          skip,
-          take: limit,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          ...(cursor ? {} : { skip }),
+          take: limit + 1,
         }),
-        prisma.pact.count({ where }),
+        prisma.pact.count({ where: baseWhere }),
       ]);
+
+      const hasMore = rowsWithOneExtra.length > limit;
+      const rows = hasMore ? rowsWithOneExtra.slice(0, limit) : rowsWithOneExtra;
+      const lastRow = rows[rows.length - 1];
+      const nextCursor =
+        hasMore && lastRow
+          ? Buffer.from(
+              JSON.stringify({
+                createdAt: lastRow.createdAt.toISOString(),
+                id: lastRow.id,
+              }),
+              "utf8",
+            ).toString("base64")
+          : undefined;
 
       return reply.send({
         data: mapPacts(rows),
         total,
         page,
         limit,
-        hasMore: skip + rows.length < total,
+        hasMore,
+        ...(nextCursor ? { nextCursor } : {}),
       });
     },
   );
@@ -218,6 +291,8 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      reply.header("Cache-Control", "public, max-age=15, stale-while-revalidate=45");
+
       const row = await prisma.pact.findUnique({
         where: { id: request.params.id },
       });
@@ -259,14 +334,25 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         return reply.unauthorized("A valid JWT is required.");
       }
 
+      let counterpartyWallet: string;
+      try {
+        counterpartyWallet = normalizeWalletAddress(body.counterpartyWallet);
+      } catch {
+        return reply.badRequest("Counterparty wallet must be a valid EVM address.");
+      }
+
       const row = await prisma.pact.create({
         data: {
           type: body.type,
           status: "PENDING",
           creatorWallet,
-          counterpartyWallet: body.counterpartyWallet,
+          counterpartyWallet,
           assetSymbol: body.assetSymbol,
           assetAmount: body.assetAmount,
+          ...(body.txHash !== undefined ? { txHash: body.txHash.toLowerCase() } : {}),
+          ...(body.contractAddress !== undefined
+            ? { contractAddress: normalizeWalletAddress(body.contractAddress) }
+            : {}),
 
           // TRADE-specific — use spread with conditional object to avoid
           // setting `undefined` properties (exactOptionalPropertyTypes).
@@ -294,6 +380,13 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
             : {}),
         },
       });
+
+      await notifyWallet(
+        row.counterpartyWallet,
+        "New pact invitation",
+        `You were invited to pact ${row.id.slice(0, 8)}.`,
+        `/pact/${row.id}`,
+      );
 
       return reply.status(201).send(mapPact(row));
     },
@@ -337,6 +430,21 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         where: { id: request.params.id },
         data: { status: newStatus },
       });
+
+      await Promise.all([
+        notifyWallet(
+          row.creatorWallet,
+          "Pact status updated",
+          `Pact ${row.id.slice(0, 8)} is now ${row.status}.`,
+          `/pact/${row.id}`,
+        ),
+        notifyWallet(
+          row.counterpartyWallet,
+          "Pact status updated",
+          `Pact ${row.id.slice(0, 8)} is now ${row.status}.`,
+          `/pact/${row.id}`,
+        ),
+      ]);
 
       return reply.send(mapPact(row));
     },
@@ -382,6 +490,11 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
         );
       }
 
+      const urlValidation = validateProofUrl(request.body.proofUrl);
+      if (!urlValidation.ok) {
+        return reply.badRequest(urlValidation.message ?? "Invalid proof URL.");
+      }
+
       const row = await prisma.pact.update({
         where: { id: request.params.id },
         data: {
@@ -390,6 +503,85 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
           status: "PROOF_SUBMITTED",
         },
       });
+
+      await notifyWallet(
+        row.counterpartyWallet,
+        "Proof submitted",
+        `Proof was submitted for pact ${row.id.slice(0, 8)}.`,
+        `/judgment-room?pactId=${row.id}`,
+      );
+
+      return reply.send(mapPact(row));
+    },
+  );
+
+  fastify.patch<{ Params: PactIdParam; Body: OnchainUpdateBody }>(
+    "/:id/onchain",
+    {
+      preHandler: requireAuth,
+      schema: {
+        params: PactIdParamSchema,
+        body: OnchainUpdateBodySchema,
+        response: { 200: PactSchema },
+      },
+    },
+    async (request, reply) => {
+      const existing = await requirePactOwnership(fastify, request, reply);
+      if (!existing) {
+        return;
+      }
+
+      const row = await prisma.pact.update({
+        where: { id: existing.id },
+        data: {
+          txHash: request.body.txHash.toLowerCase(),
+          contractAddress: normalizeWalletAddress(request.body.contractAddress),
+        },
+      });
+
+      return reply.send(mapPact(row));
+    },
+  );
+
+  fastify.post<{ Params: PactIdParam }>(
+    "/:id/accept",
+    {
+      preHandler: requireAuth,
+      schema: {
+        params: PactIdParamSchema,
+        response: { 200: PactSchema },
+      },
+    },
+    async (request, reply) => {
+      const wallet = request.walletAddress;
+      if (!wallet) {
+        return reply.unauthorized("A valid JWT is required.");
+      }
+
+      const pact = await prisma.pact.findUnique({ where: { id: request.params.id } });
+      if (!pact) {
+        return reply.notFound(`Pact ${request.params.id} not found.`);
+      }
+
+      if (pact.counterpartyWallet !== wallet) {
+        return reply.forbidden("Only the counterparty can accept this pact.");
+      }
+
+      if (pact.status !== "PENDING") {
+        return reply.badRequest(`Pact is already ${pact.status}.`);
+      }
+
+      const row = await prisma.pact.update({
+        where: { id: pact.id },
+        data: { status: "ACTIVE" },
+      });
+
+      await notifyWallet(
+        row.creatorWallet,
+        "Pact accepted",
+        `Your pact ${row.id.slice(0, 8)} was accepted by counterparty.`,
+        `/escrow/waiting-room?pactId=${row.id}`,
+      );
 
       return reply.send(mapPact(row));
     },
@@ -534,6 +726,21 @@ export default async function pactsRoutes(fastify: FastifyInstance) {
           where: { id: pactId },
           data: { status: "COMPLETE" },
         }),
+      ]);
+
+      await Promise.all([
+        notifyWallet(
+          updatedPact.creatorWallet,
+          "Pact completed",
+          `Pact ${updatedPact.id.slice(0, 8)} is complete.`,
+          `/history`,
+        ),
+        notifyWallet(
+          updatedPact.counterpartyWallet,
+          "Pact completed",
+          `Pact ${updatedPact.id.slice(0, 8)} is complete.`,
+          `/history`,
+        ),
       ]);
 
       return reply.send(mapPact(updatedPact));

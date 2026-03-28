@@ -5,6 +5,7 @@
 // ============================================================
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useAccount, useSignMessage } from "wagmi";
 import { setAuthToken, clearAuthToken } from "@/lib/api/client";
 
@@ -15,6 +16,7 @@ const TOKEN_WALLET_KEY = "safemeet_jwt_wallet";
 export function useAuth() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const pathname = usePathname();
   // Tracks the address authenticated this session (survives re-renders, not page refresh)
   const authenticatedAddressRef = useRef<string | null>(null);
 
@@ -36,10 +38,14 @@ export function useAuth() {
     if (typeof window !== "undefined") {
       const storedWallet = localStorage.getItem(TOKEN_WALLET_KEY);
       const storedToken = localStorage.getItem(TOKEN_KEY);
-      if (storedToken && storedWallet === address) {
+      if (storedToken && storedWallet === address.toLowerCase()) {
         authenticatedAddressRef.current = address;
         return;
       }
+    }
+
+    if (!pathname.startsWith("/connect")) {
+      return;
     }
 
     async function authenticate() {
@@ -77,7 +83,7 @@ export function useAuth() {
         const { token } = (await verifyRes.json()) as { token: string };
         setAuthToken(token);
         if (typeof window !== "undefined" && address) {
-          localStorage.setItem(TOKEN_WALLET_KEY, address);
+          localStorage.setItem(TOKEN_WALLET_KEY, address.toLowerCase());
         }
         authenticatedAddressRef.current = address ?? null;
       } catch (err) {
@@ -87,5 +93,5 @@ export function useAuth() {
     }
 
     void authenticate();
-  }, [address, isConnected, signMessageAsync]);
+  }, [address, isConnected, signMessageAsync, pathname]);
 }

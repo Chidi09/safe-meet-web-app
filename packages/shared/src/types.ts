@@ -74,6 +74,7 @@ export type PaginatedResponse<T> = {
   page: number;
   limit: number;
   hasMore: boolean;
+  nextCursor?: string | undefined;
 };
 
 export type HistoryList = z.infer<typeof HistoryListSchema>;

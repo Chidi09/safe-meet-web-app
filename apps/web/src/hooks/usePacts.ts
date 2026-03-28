@@ -29,6 +29,8 @@ export function usePacts(filters: PactFilters) {
     queryFn: () => pactsApi.list(filters),
     enabled: !!filters.wallet,
     staleTime: 15_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
     retry: 2,
   });
 }
@@ -43,6 +45,8 @@ export function usePact(id: string | undefined) {
     queryFn: () => pactsApi.getById(id!),
     enabled: !!id,
     staleTime: 10_000,
+    refetchInterval: 4_000,
+    refetchIntervalInBackground: true,
     retry: 2,
   });
 }
@@ -111,6 +115,30 @@ export function useVerifyQr() {
 
   return useMutation<Pact, Error, { nonce: string; pactId: string }>({
     mutationFn: ({ nonce, pactId }) => pactsApi.verifyQr(nonce, pactId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(pactKeys.detail(data.id), data);
+      queryClient.invalidateQueries({ queryKey: pactKeys.lists() });
+    },
+  });
+}
+
+export function useAcceptPact() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Pact, Error, string>({
+    mutationFn: (id: string) => pactsApi.accept(id),
+    onSuccess: (data) => {
+      queryClient.setQueryData(pactKeys.detail(data.id), data);
+      queryClient.invalidateQueries({ queryKey: pactKeys.lists() });
+    },
+  });
+}
+
+export function useAttachOnchainTx() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Pact, Error, { id: string; txHash: string; contractAddress: string }>({
+    mutationFn: ({ id, txHash, contractAddress }) => pactsApi.attachOnchainTx(id, txHash, contractAddress),
     onSuccess: (data) => {
       queryClient.setQueryData(pactKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: pactKeys.lists() });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock3, Handshake, ShieldCheck, Wallet } from "lucide-react";
+import Link from "next/link";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,11 +97,15 @@ function PactCardSkeleton() {
 function EmptyPacts() {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
+      <img src="/illustrations/flat-source-03.svg" alt="No active escrows" className="mb-6 w-full max-w-xl rounded-xl border border-white/10" />
       <ShieldCheck className="mb-4 h-10 w-10 text-on-surface-variant" />
-      <p className="font-headline text-lg font-bold text-white">No active escrows</p>
+      <p className="font-headline text-lg font-bold text-white">No active escrows yet</p>
       <p className="mt-1 text-sm text-on-surface-variant">
-        Create a new pact to get started.
+        Create your first pact to get started.
       </p>
+      <Link href="/create" className="mt-4 inline-flex h-10 items-center rounded-lg bg-primary-container px-4 text-sm font-bold text-white">
+        Create Your First Pact
+      </Link>
     </div>
   );
 }
@@ -131,12 +136,21 @@ export default function DashboardPage() {
 
         {/* Disconnected state */}
         {!walletAddress && (
-          <Card className="bg-surface text-white">
-            <CardHeader>
-              <CardTitle className="font-headline text-2xl font-bold">Wallet not connected</CardTitle>
-              <CardDescription className="text-on-surface-variant">
-                Connect your wallet to view your dashboard.
+          <Card className="bg-surface text-white shadow-[0_0_50px_-20px_#7d56fe]">
+            <CardHeader className="items-center text-center py-12">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                <Wallet className="h-6 w-6" />
+              </div>
+              <CardTitle className="font-headline text-2xl font-bold">Connect to access your dashboard</CardTitle>
+              <CardDescription className="mt-2 max-w-sm text-on-surface-variant">
+                Sign in with your wallet to view active escrows, pact history, and protocol stats.
               </CardDescription>
+              <Link
+                href="/connect"
+                className="mt-6 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
+              >
+                Connect Wallet
+              </Link>
             </CardHeader>
           </Card>
         )}

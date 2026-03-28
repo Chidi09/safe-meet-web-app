@@ -27,6 +27,8 @@ export function useHistory(filters: HistoryFilters) {
     queryFn: () => historyApi.list(filters),
     enabled: !!filters.wallet,
     staleTime: 30_000,
+    refetchInterval: 12_000,
+    refetchIntervalInBackground: true,
     retry: 2,
     placeholderData: (prev) => prev,   // keep previous page visible while loading next
   });

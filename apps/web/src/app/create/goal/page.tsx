@@ -1,18 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { isAddress } from "viem";
 import { PageFrame } from "@/components/page-frame";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreatePact } from "@/hooks/usePacts";
+import { useAttachOnchainTx, useCreatePact } from "@/hooks/usePacts";
 import { useProfile } from "@/hooks/useProfile";
 import { useWallet } from "@/components/providers";
+import { useEscrowContract } from "@/hooks/useEscrowContract";
+import { ESCROW_CONTRACT_ADDRESS } from "@/lib/escrow-contract";
 
 // ------------------------------------------------------------
 // Zod form schema
@@ -39,6 +43,8 @@ export default function CreateGoalPage() {
   const router = useRouter();
   const { walletAddress } = useWallet();
   const createPact = useCreatePact();
+  const attachOnchainTx = useAttachOnchainTx();
+  const { lockFunds, isPending: contractPending } = useEscrowContract();
   const { data: profile } = useProfile(walletAddress ?? undefined);
 
   const {
@@ -57,17 +63,37 @@ export default function CreateGoalPage() {
     if (!walletAddress) return;
     const amount = parseFloat(data.assetAmount);
     if (isNaN(amount) || amount <= 0) {
+      toast.error("Enter a valid stake amount.");
       return;
     }
-    const pact = await createPact.mutateAsync({
-      type: "GOAL",
-      goalDescription: data.goalDescription,
-      goalDeadline: new Date(data.goalDeadline).toISOString(),
-      counterpartyWallet: data.counterpartyWallet,
-      assetSymbol: data.assetSymbol,
-      assetAmount: amount,
-    });
-    router.push(`/escrow/waiting-room?pactId=${pact.id}`);
+    try {
+      if (!isAddress(data.counterpartyWallet)) {
+        throw new Error("Referee must be a wallet address for on-chain lock.");
+      }
+      const pact = await createPact.mutateAsync({
+        type: "GOAL",
+        goalDescription: data.goalDescription,
+        goalDeadline: new Date(data.goalDeadline).toISOString(),
+        counterpartyWallet: data.counterpartyWallet,
+        assetSymbol: data.assetSymbol,
+        assetAmount: amount,
+      });
+      const txHash = await lockFunds({
+        pactId: pact.id,
+        counterpartyWallet: data.counterpartyWallet,
+        amountEth: amount,
+      });
+      await attachOnchainTx.mutateAsync({
+        id: pact.id,
+        txHash,
+        contractAddress: ESCROW_CONTRACT_ADDRESS ?? "0x0000000000000000000000000000000000000000",
+      });
+      toast.success("Goal pact created!");
+      router.push(`/escrow/waiting-room?pactId=${pact.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create pact.";
+      toast.error(message);
+    }
   };
 
   return (
@@ -187,10 +213,10 @@ export default function CreateGoalPage() {
               {/* Submit */}
               <Button
                 onClick={handleSubmit(onSubmit)}
-                disabled={!walletAddress || createPact.isPending}
+                disabled={!walletAddress || createPact.isPending || contractPending || attachOnchainTx.isPending}
                 className="h-12 w-full rounded-lg bg-error-container font-headline text-lg font-bold text-white hover:bg-error-container/90"
               >
-                {createPact.isPending ? "Staking..." : "Stake My Pride and Crypto"}
+                {createPact.isPending || contractPending || attachOnchainTx.isPending ? "Staking..." : "Stake My Pride and Crypto"}
               </Button>
             </CardContent>
           </Card>

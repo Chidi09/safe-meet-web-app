@@ -13,16 +13,21 @@ import type {
   FastifyPluginAsync,
   preHandlerHookHandler,
 } from "fastify";
+import { redis } from "../lib/redis.js";
+import { normalizeWalletAddress } from "../lib/wallet.js";
 
 // Augment the Fastify request interface so TypeScript knows about the decoration.
 declare module "fastify" {
   interface FastifyRequest {
     walletAddress: string | null;
+    sessionId: string | null;
+    jwtExp: number | null;
   }
 }
 
 export interface JwtPayload {
   wallet: string;
+  sessionId?: string;
   iat?: number;
   exp?: number;
 }
@@ -34,6 +39,8 @@ export interface JwtPayload {
 const authPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // Decorate every request with a nullable walletAddress.
   fastify.decorateRequest("walletAddress", null);
+  fastify.decorateRequest("sessionId", null);
+  fastify.decorateRequest("jwtExp", null);
 
   // Before each request, try to extract + verify the bearer JWT.
   fastify.addHook("onRequest", async (request: FastifyRequest) => {
@@ -42,7 +49,18 @@ const authPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
     try {
       const payload = await request.jwtVerify<JwtPayload>();
-      request.walletAddress = payload.wallet ?? null;
+      if (!payload.wallet || !payload.sessionId || !payload.exp) {
+        return;
+      }
+
+      const revoked = await redis.exists(`auth:revoked:${payload.sessionId}`);
+      if (revoked === 1) {
+        return;
+      }
+
+      request.walletAddress = normalizeWalletAddress(payload.wallet);
+      request.sessionId = payload.sessionId;
+      request.jwtExp = payload.exp;
     } catch {
       // Token invalid / expired — leave walletAddress null.
       // Routes that require auth will reject via requireAuth.

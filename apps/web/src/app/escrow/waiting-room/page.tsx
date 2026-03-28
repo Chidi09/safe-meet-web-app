@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { PageFrame } from "@/components/page-frame";
+import { PactTimeline } from "@/components/pact-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,8 +45,14 @@ export default function WaitingRoomPage() {
 
   const handleCancelRefund = async () => {
     if (!pactId) return;
-    await updateStatus.mutateAsync({ id: pactId, status: "CANCELLED" });
-    router.push("/dashboard");
+    try {
+      await updateStatus.mutateAsync({ id: pactId, status: "CANCELLED" });
+      toast.success("Pact cancelled.");
+      router.push("/dashboard");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to cancel pact.";
+      toast.error(message);
+    }
   };
 
   return (
@@ -52,12 +60,7 @@ export default function WaitingRoomPage() {
       <section className="section-wrap max-w-3xl">
         <Card className="overflow-hidden bg-surface text-white">
           <CardHeader className="border-b border-outline-variant/20 bg-surface-high">
-            {/* Progress steps */}
-            <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.16em] text-on-surface-variant">
-              <span>Created</span>
-              <span className="text-tertiary">Funds Locked</span>
-              <span>Ready to meet</span>
-            </div>
+            {pact ? <PactTimeline status={pact.status} /> : null}
             <CardTitle className="mt-5 font-headline text-3xl font-bold text-white">
               Escrow is Securely Funded
             </CardTitle>
@@ -137,6 +140,26 @@ export default function WaitingRoomPage() {
             </div>
 
             {/* Actions */}
+            {pact && pact.status === "PENDING" && (
+              <div className="rounded-lg border border-tertiary/40 bg-tertiary/10 p-4 text-sm text-tertiary">
+                Waiting for counterparty to accept this pact.
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 border-tertiary/40 bg-transparent text-tertiary"
+                    onClick={async () => {
+                      const shareUrl = `${window.location.origin}/pact/${pact.id}`;
+                      await navigator.clipboard.writeText(shareUrl);
+                      toast.success("Pact link copied");
+                    }}
+                  >
+                    Copy Share Link
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-2">
               {pact?.type === "TRADE" && (
                 <Button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Download, Search } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import { useHistory } from "@/hooks/useHistory";
 import { useProfile } from "@/hooks/useProfile";
 import { useWallet } from "@/components/providers";
 import type { Pact, PactStatus } from "@/lib/types";
+import { getTxExplorerUrl } from "@/lib/chain";
 
 
 function StatusBadge({ status }: { status: PactStatus }) {
@@ -64,12 +66,14 @@ function RowSkeleton() {
 export default function HistoryPage() {
   const { walletAddress } = useWallet();
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const currentCursor = cursorStack.length > 0 ? cursorStack[cursorStack.length - 1] : undefined;
 
   const { data, isLoading, isError, refetch } = useHistory({
     wallet: walletAddress ?? "",
-    page,
+    page: 1,
     limit: 20,
+    cursor: currentCursor,
   });
 
   const { data: profile } = useProfile(walletAddress ?? undefined);
@@ -147,12 +151,21 @@ export default function HistoryPage() {
 
         {/* Disconnected state */}
         {!walletAddress && (
-          <Card className="bg-surface text-white">
-            <CardHeader>
-              <CardTitle className="font-headline text-2xl font-bold">Wallet not connected</CardTitle>
-              <CardDescription className="text-on-surface-variant">
-                Connect your wallet to view transaction history.
+          <Card className="bg-surface text-white shadow-[0_0_50px_-20px_#3892f8]">
+            <CardHeader className="items-center text-center py-12">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-secondary-container/20 bg-secondary-container/10 text-secondary-container">
+                <Download className="h-6 w-6" />
+              </div>
+              <CardTitle className="font-headline text-2xl font-bold">Connect to view transaction history</CardTitle>
+              <CardDescription className="mt-2 max-w-sm text-on-surface-variant">
+                Every pact you create or participate in is recorded here with cryptographic finality.
               </CardDescription>
+              <Link
+                href="/connect"
+                className="mt-6 inline-flex h-11 items-center rounded-xl bg-primary-container px-8 text-sm font-bold text-white hover:bg-primary-container/90"
+              >
+                Connect Wallet
+              </Link>
             </CardHeader>
           </Card>
         )}
@@ -226,7 +239,12 @@ export default function HistoryPage() {
                       ) : filtered.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="py-12 text-center text-on-surface-variant">
-                            {search ? "No results match your search." : "No transaction history yet."}
+                            {search ? "No results match your search." : "Your completed trades will appear here."}
+                            {!search && (
+                              <div className="mt-3">
+                                <Link href="/create" className="text-primary hover:underline">Create a pact</Link>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -251,6 +269,18 @@ export default function HistoryPage() {
                             </TableCell>
                             <TableCell className="text-right font-semibold text-white">
                               {pact.asset.amountFormatted}
+                              {pact.txHash ? (
+                                <div>
+                                  <a
+                                    href={getTxExplorerUrl(pact.txHash)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-primary hover:underline"
+                                  >
+                                    tx
+                                  </a>
+                                </div>
+                              ) : null}
                             </TableCell>
                           </TableRow>
                         ))
@@ -259,20 +289,23 @@ export default function HistoryPage() {
                   </Table>
 
                   {/* Pagination */}
-                  {data && data.hasMore && (
+                  {data && (data.hasMore || cursorStack.length > 0) && (
                     <div className="mt-4 flex justify-center gap-3">
                       <Button
                         variant="outline"
                         className="h-9 rounded-lg border-outline-variant/40 bg-surface-high text-white"
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => p - 1)}
+                        disabled={cursorStack.length === 0}
+                        onClick={() => setCursorStack((prev) => prev.slice(0, -1))}
                       >
                         Previous
                       </Button>
                       <Button
                         variant="outline"
                         className="h-9 rounded-lg border-outline-variant/40 bg-surface-high text-white"
-                        onClick={() => setPage((p) => p + 1)}
+                        onClick={() => {
+                          if (!data?.nextCursor) return;
+                          setCursorStack((prev) => [...prev, data.nextCursor!]);
+                        }}
                       >
                         Next
                       </Button>

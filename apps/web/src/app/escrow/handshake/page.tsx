@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePact, useGenerateQr, useVerifyQr } from "@/hooks/usePacts";
+import { getTxExplorerUrl } from "@/lib/chain";
 
 // Dynamically import react-qr-code with no SSR
 const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
@@ -93,7 +94,11 @@ export default function HandshakePage() {
   const qrData = generateQr.data;
 
   const handleGenerateQr = () => {
-    if (pactId) generateQr.mutate(pactId);
+    if (!pactId) return;
+    generateQr.mutate(pactId, {
+      onSuccess: () => toast.success("QR generated."),
+      onError: (error) => toast.error(error instanceof Error ? error.message : "Failed to generate QR."),
+    });
   };
 
   const handleScan = (nonce: string) => {
@@ -151,6 +156,18 @@ export default function HandshakePage() {
                   ? `TX: ${pact.txHash.slice(0, 6)}...${pact.txHash.slice(-4)}`
                   : "TX: Not yet submitted"}
             </div>
+            {pact?.txHash && (
+              <div className="mt-2">
+                <a
+                  href={getTxExplorerUrl(pact.txHash)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  View on BaseScan
+                </a>
+              </div>
+            )}
 
             {/* Generate QR button */}
             {pactId && !qrData && (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoIcon } from "@/components/logo-icon";
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ export default function NotFound() {
       <Card className="w-full max-w-md bg-surface text-white">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-surface-high">
-            <span className="font-headline text-4xl font-bold text-on-surface-variant">404</span>
+            <LogoIcon className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="font-headline text-2xl font-bold">Page Not Found</CardTitle>
           <CardDescription className="text-on-surface-variant">

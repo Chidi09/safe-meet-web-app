@@ -167,7 +167,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
               </div>
             ) : recentPacts.length === 0 ? (
               <p className="py-8 text-center text-sm text-on-surface-variant">
-                No activity yet.
+                This wallet has no trades yet.
               </p>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

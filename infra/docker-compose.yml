@@ -16,6 +16,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -31,6 +35,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   web_blue:
     image: "safe-meet-app:blue"
@@ -45,6 +53,10 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:3101:3000"
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   web_green:
     image: "safe-meet-app:green"
@@ -59,6 +71,10 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:3102:3000"
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   api_blue:
     image: "safe-meet-app:blue"
@@ -68,6 +84,8 @@ services:
     command: ["sh", "-lc", "HOST=0.0.0.0 PORT=4000 pnpm start"]
     env_file:
       - ../.env.api
+    volumes:
+      - ../logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,6 +93,10 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:4101:4000"
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   api_green:
     image: "safe-meet-app:green"
@@ -84,6 +106,8 @@ services:
     command: ["sh", "-lc", "HOST=0.0.0.0 PORT=4000 pnpm start"]
     env_file:
       - ../.env.api
+    volumes:
+      - ../logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +115,10 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:4102:4000"
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
 
 volumes:
   postgres_data:

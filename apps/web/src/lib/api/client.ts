@@ -42,6 +42,50 @@ function getAuthToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function hasAuthToken(): boolean {
+  return getAuthToken() !== null;
+}
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAuthToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    const url = new URL(`${BASE_URL}/api/auth/refresh`, typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      clearAuthToken();
+      return null;
+    }
+
+    const data = (await response.json()) as { token?: string };
+    if (!data.token) {
+      clearAuthToken();
+      return null;
+    }
+
+    setAuthToken(data.token);
+    return data.token;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
 // ------------------------------------------------------------
 // Custom error class
 // ------------------------------------------------------------
@@ -67,6 +111,7 @@ export type QueryParams = Record<string, string | number | boolean | undefined |
 interface RequestOptions extends Omit<RequestInit, "body"> {
   params?: QueryParams;
   body?: unknown;
+  _retried?: boolean;
 }
 
 // ------------------------------------------------------------
@@ -77,7 +122,7 @@ async function request<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { params, body, headers, ...rest } = options;
+  const { params, body, headers, _retried, ...rest } = options;
 
   // Build URL with query params
   const url = new URL(`${BASE_URL}${path}`, typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
@@ -136,6 +181,14 @@ async function request<T>(
   // Handle HTTP errors
   if (!response.ok) {
     const err = data as Partial<ApiError>;
+
+    if (response.status === 401 && !_retried) {
+      const newToken = await refreshAuthToken();
+      if (newToken) {
+        return request<T>(path, { ...options, _retried: true });
+      }
+    }
+
     throw new ApiRequestError({
       code: err.code ?? "UNKNOWN_ERROR",
       message: err.message ?? `Request failed with status ${response.status}`,
