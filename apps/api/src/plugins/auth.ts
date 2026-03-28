@@ -13,6 +13,7 @@ import type {
   FastifyPluginAsync,
   preHandlerHookHandler,
 } from "fastify";
+import fp from "fastify-plugin";
 import { redis } from "../lib/redis.js";
 import { normalizeWalletAddress } from "../lib/wallet.js";
 
@@ -36,7 +37,7 @@ export interface JwtPayload {
 // `{ skip-override: true }` symbol so decorations leak to the parent scope.
 // In Fastify v5 we achieve this by registering at the root scope in index.ts
 // (before route sub-scopes) and using decorateRequest here.
-const authPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+const authPlugin: FastifyPluginAsync = fp(async (fastify: FastifyInstance) => {
   // Decorate every request with a nullable walletAddress.
   fastify.decorateRequest("walletAddress", null);
   fastify.decorateRequest("sessionId", null);
@@ -66,7 +67,7 @@ const authPlugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       // Routes that require auth will reject via requireAuth.
     }
   });
-};
+});
 
 export default authPlugin;
 
